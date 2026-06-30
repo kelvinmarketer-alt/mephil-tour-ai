@@ -3,4 +3,4 @@ node_modules
 .wrangler
 .DS_Store
 # Tự sinh khi build từ knowledge/*.md
-functions/_shared/knowledge.js
+src/knowledge.js

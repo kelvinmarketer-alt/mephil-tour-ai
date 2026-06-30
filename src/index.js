@@ -1,11 +1,44 @@
-// Webhook Telegram: POST /api/telegram
-// Trả "ok" ngay, xử lý câu trả lời ở nền (waitUntil) để Telegram không retry.
-import { askClaude } from "../_shared/claude.js";
+// Cloudflare Worker: phục vụ web tĩnh (public/) + 2 API: /api/ask (web) và /api/telegram (bot).
+import { askClaude } from "./claude.js";
 
-export async function onRequestPost(context) {
-  const { request, env } = context;
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
 
-  // Xác thực secret nếu có cấu hình.
+    if (request.method === "POST" && url.pathname === "/api/ask") {
+      return handleAsk(request, env);
+    }
+    if (request.method === "POST" && url.pathname === "/api/telegram") {
+      return handleTelegram(request, env, ctx);
+    }
+
+    // Còn lại: tài nguyên tĩnh (index.html...). Assets-first đã phục vụ; đây là fallback.
+    return env.ASSETS.fetch(request);
+  },
+};
+
+function json(obj, status = 200) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+// ---- Web chat ----
+async function handleAsk(request, env) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const question = (body.question || "").toString().trim();
+    if (!question) return json({ error: "Thiếu câu hỏi" }, 400);
+    const answer = await askClaude({ question, history: body.history || [], env });
+    return json({ answer });
+  } catch (e) {
+    return json({ error: "Lỗi xử lý: " + e.message }, 500);
+  }
+}
+
+// ---- Telegram webhook ---- (trả "ok" ngay, xử lý ở nền để Telegram không retry)
+async function handleTelegram(request, env, ctx) {
   if (env.TELEGRAM_SECRET) {
     const got = request.headers.get("x-telegram-bot-api-secret-token");
     if (got !== env.TELEGRAM_SECRET) return new Response("forbidden", { status: 403 });
@@ -23,11 +56,11 @@ export async function onRequestPost(context) {
   const text = (msg?.text || "").trim();
   if (!chatId || !text) return new Response("ok");
 
-  context.waitUntil(handle(env, chatId, text));
+  ctx.waitUntil(replyTelegram(env, chatId, text));
   return new Response("ok");
 }
 
-async function handle(env, chatId, text) {
+async function replyTelegram(env, chatId, text) {
   if (text.startsWith("/start") || text.startsWith("/help")) {
     return sendMessage(
       env,
@@ -54,7 +87,6 @@ async function handle(env, chatId, text) {
 }
 
 async function sendMessage(env, chatId, text) {
-  // Telegram giới hạn 4096 ký tự/tin nhắn → chia nhỏ nếu dài.
   for (let i = 0; i < text.length; i += 3800) {
     await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: "POST",

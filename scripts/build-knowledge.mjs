@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const KNOWLEDGE_DIR = join(root, "knowledge");
-const OUT = join(root, "functions", "_shared", "knowledge.js");
+const OUT = join(root, "src", "knowledge.js");
 
 async function walk(dir) {
   let out = [];
@@ -36,6 +36,6 @@ await writeFile(
 );
 
 console.log(
-  `✓ Gom ${files.length} file → functions/_shared/knowledge.js (${combined.length.toLocaleString()} ký tự)`
+  `✓ Gom ${files.length} file → src/knowledge.js (${combined.length.toLocaleString()} ký tự)`
 );
 if (!files.length) console.warn("⚠ Không tìm thấy file .md nào trong knowledge/");

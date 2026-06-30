@@ -6,10 +6,10 @@
   "description": "Trợ lý AI hỏi-đáp tour Mê Philippines (web + Telegram) cho nhân viên sale",
   "scripts": {
     "build": "node scripts/build-knowledge.mjs",
-    "dev": "npm run build && wrangler pages dev public",
-    "deploy": "npm run build && wrangler pages deploy public"
+    "dev": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy"
   },
   "devDependencies": {
-    "wrangler": "^3.95.0"
+    "wrangler": "^3.114.0"
   }
 }
