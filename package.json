@@ -1,0 +1,15 @@
+{
+  "name": "mephil-tour-ai",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Trợ lý AI hỏi-đáp tour Mê Philippines (web + Telegram) cho nhân viên sale",
+  "scripts": {
+    "build": "node scripts/build-knowledge.mjs",
+    "dev": "npm run build && wrangler pages dev public",
+    "deploy": "npm run build && wrangler pages deploy public"
+  },
+  "devDependencies": {
+    "wrangler": "^3.95.0"
+  }
+}

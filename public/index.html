@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Trợ lý Tour · Mê Philippines</title>
+    <style>
+      :root {
+        --navy: #0b3d91;
+        --navy-2: #1456c4;
+        --sky: #eaf2ff;
+        --gold: #ffb703;
+        --ink: #16243b;
+        --muted: #6b7a90;
+        --line: #e3e9f2;
+        --bot: #f4f7fc;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        color: var(--ink);
+        background: linear-gradient(180deg, #f7faff, #eef3fb);
+        display: flex; flex-direction: column; height: 100dvh;
+      }
+      header {
+        background: linear-gradient(135deg, var(--navy), var(--navy-2));
+        color: #fff; padding: 14px 18px; display: flex; align-items: center; gap: 12px;
+        box-shadow: 0 2px 12px rgba(11,61,145,.18);
+      }
+      .logo {
+        width: 38px; height: 38px; border-radius: 10px; background: var(--gold);
+        display: grid; place-items: center; font-size: 20px; flex: none;
+      }
+      header h1 { font-size: 16px; margin: 0; line-height: 1.2; }
+      header p { font-size: 12px; margin: 2px 0 0; opacity: .85; }
+      main {
+        flex: 1; overflow-y: auto; padding: 18px 14px 8px;
+        max-width: 760px; width: 100%; margin: 0 auto;
+      }
+      .msg { display: flex; margin: 10px 0; gap: 10px; }
+      .msg .av { width: 30px; height: 30px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 15px; }
+      .msg.user { flex-direction: row-reverse; }
+      .bubble {
+        padding: 11px 14px; border-radius: 14px; max-width: 80%;
+        line-height: 1.55; font-size: 15px; white-space: pre-wrap; word-wrap: break-word;
+      }
+      .user .av { background: var(--navy); color: #fff; }
+      .user .bubble { background: var(--navy); color: #fff; border-bottom-right-radius: 4px; }
+      .bot .av { background: var(--gold); }
+      .bot .bubble { background: var(--bot); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+      .bubble table { border-collapse: collapse; margin: 6px 0; font-size: 14px; }
+      .bubble th, .bubble td { border: 1px solid var(--line); padding: 5px 9px; text-align: left; }
+      .bubble code { background: #e9eef7; padding: 1px 5px; border-radius: 5px; font-size: 13px; }
+      .hint { color: var(--muted); font-size: 13px; text-align: center; margin: 6px 0 14px; }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 8px; }
+      .chip {
+        background: #fff; border: 1px solid var(--line); color: var(--navy);
+        padding: 7px 12px; border-radius: 20px; font-size: 13px; cursor: pointer;
+      }
+      .chip:hover { background: var(--sky); }
+      footer {
+        padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+        background: #fff; border-top: 1px solid var(--line);
+      }
+      .composer { max-width: 760px; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; }
+      textarea {
+        flex: 1; resize: none; border: 1px solid var(--line); border-radius: 12px;
+        padding: 11px 13px; font: inherit; font-size: 15px; max-height: 120px; outline: none;
+      }
+      textarea:focus { border-color: var(--navy-2); }
+      button.send {
+        background: var(--navy); color: #fff; border: 0; border-radius: 12px;
+        width: 46px; height: 46px; font-size: 18px; cursor: pointer; flex: none;
+      }
+      button.send:disabled { opacity: .5; cursor: default; }
+      .typing span { display: inline-block; width: 7px; height: 7px; margin: 0 2px; border-radius: 50%; background: var(--muted); animation: b 1.2s infinite; }
+      .typing span:nth-child(2) { animation-delay: .2s; }
+      .typing span:nth-child(3) { animation-delay: .4s; }
+      @keyframes b { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="logo">🌴</div>
+      <div>
+        <h1>Trợ lý Tour · Mê Philippines</h1>
+        <p>Hỏi gì về tour cũng có đáp — theo đúng tài liệu công ty</p>
+      </div>
+    </header>
+
+    <main id="chat">
+      <div class="hint">Gợi ý câu hỏi:</div>
+      <div class="chips" id="chips">
+        <div class="chip">Tour Cebu Bohol giá bao nhiêu?</div>
+        <div class="chip">Chính sách hủy tour thế nào?</div>
+        <div class="chip">Trẻ em mấy tuổi tính giá trẻ em?</div>
+        <div class="chip">Mùa nào đi Philippines đẹp nhất?</div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="composer">
+        <textarea id="input" rows="1" placeholder="Nhập câu hỏi về tour..." autocomplete="off"></textarea>
+        <button class="send" id="send" title="Gửi">➤</button>
+      </div>
+    </footer>
+
+    <script>
+      const chat = document.getElementById("chat");
+      const input = document.getElementById("input");
+      const sendBtn = document.getElementById("send");
+      const chips = document.getElementById("chips");
+      let history = [];
+      let busy = false;
+
+      const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+      // Render markdown rất gọn: bảng, **đậm**, `code`, gạch đầu dòng, xuống dòng.
+      function render(md) {
+        const lines = esc(md).split("\n");
+        let html = "", i = 0;
+        while (i < lines.length) {
+          if (lines[i].includes("|") && lines[i + 1] && /^\s*\|?[\s:|-]+\|?\s*$/.test(lines[i + 1])) {
+            const rows = [];
+            while (i < lines.length && lines[i].includes("|")) rows.push(lines[i++]);
+            const cells = (r) => r.replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+            html += "<table><thead><tr>" + cells(rows[0]).map((c) => `<th>${c}</th>`).join("") + "</tr></thead><tbody>";
+            for (let r = 2; r < rows.length; r++) html += "<tr>" + cells(rows[r]).map((c) => `<td>${c}</td>`).join("") + "</tr>";
+            html += "</tbody></table>";
+            continue;
+          }
+          html += lines[i] + "\n";
+          i++;
+        }
+        return html
+          .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+          .replace(/`(.+?)`/g, "<code>$1</code>")
+          .replace(/^\s*[-*]\s+/gm, "• ");
+      }
+
+      function add(role, text) {
+        const wrap = document.createElement("div");
+        wrap.className = "msg " + role;
+        wrap.innerHTML = `<div class="av">${role === "user" ? "🧑" : "🌴"}</div><div class="bubble"></div>`;
+        wrap.querySelector(".bubble").innerHTML = role === "bot" ? render(text) : esc(text);
+        chat.appendChild(wrap);
+        chat.scrollTop = chat.scrollHeight;
+        return wrap.querySelector(".bubble");
+      }
+
+      async function ask(question) {
+        if (busy || !question.trim()) return;
+        busy = true; sendBtn.disabled = true;
+        if (chips) chips.remove();
+        add("user", question);
+        history.push({ role: "user", content: question });
+        input.value = ""; input.style.height = "auto";
+
+        const bubble = add("bot", "");
+        bubble.innerHTML = '<span class="typing"><span></span><span></span><span></span></span>';
+
+        try {
+          const res = await fetch("/api/ask", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ question, history: history.slice(0, -1) }),
+          });
+          const data = await res.json();
+          const answer = data.answer || data.error || "Có lỗi xảy ra.";
+          bubble.innerHTML = render(answer);
+          history.push({ role: "assistant", content: answer });
+        } catch (e) {
+          bubble.textContent = "Lỗi kết nối, thử lại nhé.";
+        } finally {
+          busy = false; sendBtn.disabled = false;
+          chat.scrollTop = chat.scrollHeight;
+          input.focus();
+        }
+      }
+
+      sendBtn.onclick = () => ask(input.value);
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(input.value); }
+      });
+      input.addEventListener("input", () => {
+        input.style.height = "auto";
+        input.style.height = Math.min(input.scrollHeight, 120) + "px";
+      });
+      chips.addEventListener("click", (e) => {
+        if (e.target.classList.contains("chip")) ask(e.target.textContent);
+      });
+    </script>
+  </body>
+</html>

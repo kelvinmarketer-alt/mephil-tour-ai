@@ -1,0 +1,12 @@
+name = "mephil-tour-ai"
+compatibility_date = "2026-01-01"
+pages_build_output_dir = "public"
+
+# Bí mật (ANTHROPIC_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_SECRET) KHÔNG để ở đây.
+# Cấu hình trong Cloudflare Pages → Settings → Environment variables (đánh dấu "Secret"),
+# hoặc local: tạo file .dev.vars (xem .dev.vars.example).
+#
+# Tùy chọn không bí mật có thể đặt ở đây:
+[vars]
+MODEL = "claude-opus-4-8"
+MAX_TOKENS = "2048"
