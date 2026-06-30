@@ -1,5 +1,4 @@
-// Gọi OpenAI: nạp toàn bộ tài liệu tour vào system message rồi hỏi.
-import { KNOWLEDGE } from "./knowledge.js";
+// Gọi OpenAI: nạp toàn bộ tài liệu tour (do caller dựng từ KV) vào system message rồi hỏi.
 import { SYSTEM_INSTRUCTIONS } from "./system-prompt.js";
 
 const API_URL = "https://api.openai.com/v1/chat/completions";
@@ -21,7 +20,7 @@ function normalizeHistory(history) {
   return out.slice(-8);
 }
 
-export async function askAI({ question, history = [], apiKey, model }) {
+export async function askAI({ question, history = [], apiKey, model, knowledge }) {
   if (!apiKey) throw new Error("Chưa cấu hình OpenAI API key");
 
   const messages = [
@@ -30,7 +29,7 @@ export async function askAI({ question, history = [], apiKey, model }) {
       content:
         SYSTEM_INSTRUCTIONS +
         "\n\n=== TÀI LIỆU TOUR (nguồn DUY NHẤT để trả lời) ===\n\n" +
-        KNOWLEDGE,
+        (knowledge && knowledge.trim() ? knowledge : "(Kho tài liệu đang trống — báo người dùng vào trang 📚 Tài liệu để thêm.)"),
     },
     ...normalizeHistory(history),
     { role: "user", content: String(question).slice(0, 4000) },

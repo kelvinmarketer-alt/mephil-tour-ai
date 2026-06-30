@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tài liệu · Trợ lý Tour Mê Philippines</title>
+    <style>
+      :root { --navy: #0b3d91; --navy-2: #1456c4; --line: #e3e9f2; --ink: #16243b; --muted: #6b7a90; --gold: #ffb703; --ok: #1a8a4a; --bad: #c0392b; }
+      * { box-sizing: border-box; }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: var(--ink); background: #eef3fb; margin: 0; }
+      header { background: linear-gradient(135deg, var(--navy), var(--navy-2)); color: #fff; padding: 16px 20px; display: flex; align-items: center; gap: 12px; }
+      header .logo { width: 36px; height: 36px; border-radius: 9px; background: var(--gold); display: grid; place-items: center; font-size: 19px; }
+      header h1 { font-size: 16px; margin: 0; }
+      header .nav { margin-left: auto; display: flex; gap: 8px; }
+      header .nav a { color: #fff; text-decoration: none; font-size: 14px; background: rgba(255,255,255,.15); padding: 7px 12px; border-radius: 8px; }
+      main { max-width: 760px; margin: 22px auto; padding: 0 16px 50px; }
+      .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+      .card h2 { font-size: 15px; margin: 0 0 4px; }
+      .sub { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
+      label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 5px; }
+      input, textarea { width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; font: inherit; font-size: 14px; outline: none; }
+      textarea { min-height: 220px; resize: vertical; line-height: 1.5; }
+      input:focus, textarea:focus { border-color: var(--navy-2); }
+      button { background: var(--navy); color: #fff; border: 0; border-radius: 9px; padding: 10px 16px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+      button.ghost { background: #fff; color: var(--navy); border: 1px solid var(--line); }
+      button.danger { background: #fff; color: var(--bad); border: 1px solid #f3c4be; }
+      button:disabled { opacity: .5; cursor: default; }
+      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      #msg { font-size: 14px; padding: 10px 12px; border-radius: 9px; margin-bottom: 14px; display: none; }
+      #msg.ok { display: block; background: #e6f6ec; color: var(--ok); }
+      #msg.err { display: block; background: #fdecea; color: var(--bad); }
+      .doc { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+      .doc .t { font-weight: 600; font-size: 14px; }
+      .doc .meta { font-size: 12px; color: var(--muted); }
+      .doc .acts { margin-left: auto; display: flex; gap: 8px; }
+      .doc button { padding: 6px 11px; font-size: 13px; }
+      .empty { color: var(--muted); font-size: 14px; }
+      #editor { display: none; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="logo">📚</div>
+      <h1>Tài liệu tour</h1>
+      <div class="nav"><a href="/settings">⚙️ Cài đặt</a><a href="/">← Chat</a></div>
+    </header>
+
+    <main>
+      <div id="msg"></div>
+
+      <div class="card" id="lockCard">
+        <h2>Mở khóa quản lý</h2>
+        <p class="sub">Nhập mật khẩu admin để xem & sửa kho tài liệu tour.</p>
+        <div class="row">
+          <input id="adminPass" type="password" placeholder="Mật khẩu admin" style="max-width:320px" />
+          <button id="unlockBtn" type="button">Mở khóa</button>
+        </div>
+      </div>
+
+      <div id="panel" style="display:none">
+        <div class="card">
+          <div class="row" style="justify-content:space-between">
+            <div><h2 style="margin:0">Danh sách tài liệu</h2><p class="sub" style="margin:2px 0 0" id="count"></p></div>
+            <button id="newBtn" type="button">➕ Thêm tài liệu</button>
+          </div>
+          <div id="list" style="margin-top:14px"></div>
+        </div>
+
+        <div class="card" id="editor">
+          <h2 id="editorTitle">Thêm tài liệu</h2>
+          <p class="sub">AI sẽ trả lời nhân viên dựa trên nội dung này. Viết rõ ràng (giá, lịch trình, chính sách...).</p>
+          <input type="hidden" id="docId" />
+          <label>Tiêu đề (vd: "Tour Cebu – Bohol 4N3Đ" hoặc "Chính sách hủy tour")</label>
+          <input id="docTitle" type="text" placeholder="Tên tài liệu / tour" />
+          <label>Nội dung</label>
+          <textarea id="docContent" placeholder="Dán hoặc gõ nội dung tour: giá, lịch trình, bao gồm, không bao gồm, lưu ý..."></textarea>
+          <div class="row" style="margin-top:12px">
+            <button id="saveDocBtn" type="button">💾 Lưu tài liệu</button>
+            <button class="ghost" id="cancelBtn" type="button">Hủy</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      let pass = "";
+      let docs = [];
+      const msg = (t, ok) => { const m = $("msg"); m.textContent = t; m.className = ok ? "ok" : "err"; window.scrollTo(0, 0); };
+      const esc = (s) => (s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+      async function api(path, body) {
+        const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ adminPassword: pass, ...body }) });
+        return res.json();
+      }
+
+      async function loadList() {
+        const data = await api("/api/docs/list", {});
+        if (data.error) { msg(data.error, false); return false; }
+        docs = data.documents || [];
+        $("count").textContent = docs.length + " tài liệu";
+        if (!docs.length) { $("list").innerHTML = '<div class="empty">Chưa có tài liệu nào. Bấm "➕ Thêm tài liệu" để bắt đầu.</div>'; return true; }
+        $("list").innerHTML = docs.map((d) =>
+          `<div class="doc"><div><div class="t">${esc(d.title)}</div><div class="meta">${(d.content || "").length} ký tự</div></div>
+           <div class="acts"><button class="ghost" data-edit="${d.id}">Sửa</button><button class="danger" data-del="${d.id}">Xóa</button></div></div>`
+        ).join("");
+        return true;
+      }
+
+      $("unlockBtn").onclick = async () => {
+        pass = $("adminPass").value;
+        if (!pass) return msg("Nhập mật khẩu admin.", false);
+        $("unlockBtn").disabled = true;
+        const ok = await loadList();
+        $("unlockBtn").disabled = false;
+        if (ok) { $("lockCard").style.display = "none"; $("panel").style.display = "block"; msg("✓ Đã mở khóa.", true); }
+      };
+
+      function openEditor(doc) {
+        $("editor").style.display = "block";
+        $("editorTitle").textContent = doc ? "Sửa tài liệu" : "Thêm tài liệu";
+        $("docId").value = doc ? doc.id : "";
+        $("docTitle").value = doc ? doc.title : "";
+        $("docContent").value = doc ? doc.content : "";
+        $("editor").scrollIntoView({ behavior: "smooth" });
+      }
+
+      $("newBtn").onclick = () => openEditor(null);
+      $("cancelBtn").onclick = () => { $("editor").style.display = "none"; };
+
+      $("list").addEventListener("click", async (e) => {
+        const editId = e.target.getAttribute("data-edit");
+        const delId = e.target.getAttribute("data-del");
+        if (editId) openEditor(docs.find((d) => d.id === editId));
+        if (delId) {
+          if (!confirm("Xóa tài liệu này?")) return;
+          const data = await api("/api/docs/delete", { id: delId });
+          if (data.ok) { msg("✓ Đã xóa.", true); loadList(); } else msg(data.error || "Xóa thất bại.", false);
+        }
+      });
+
+      $("saveDocBtn").onclick = async () => {
+        const title = $("docTitle").value.trim();
+        if (!title) return msg("Nhập tiêu đề tài liệu.", false);
+        $("saveDocBtn").disabled = true;
+        const data = await api("/api/docs/save", { id: $("docId").value || undefined, title, content: $("docContent").value });
+        $("saveDocBtn").disabled = false;
+        if (data.ok) { msg("✓ Đã lưu tài liệu.", true); $("editor").style.display = "none"; loadList(); }
+        else msg(data.error || "Lưu thất bại.", false);
+      };
+    </script>
+  </body>
+</html>

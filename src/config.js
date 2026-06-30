@@ -35,3 +35,20 @@ export async function isAdmin(env, password) {
   if (!adminHash) return false;
   return (await sha256(password)) === adminHash;
 }
+
+// ---- Kho tài liệu tour (lưu trong KV, quản lý qua trang 📚 Tài liệu) ----
+export async function getDocuments(env) {
+  if (!env.SETTINGS) return [];
+  const raw = await env.SETTINGS.get("documents");
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveDocuments(env, docs) {
+  await env.SETTINGS.put("documents", JSON.stringify(docs));
+}
