@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cài đặt · Trợ lý Tour Mê Philippines</title>
+    <style>
+      :root { --navy: #0b3d91; --navy-2: #1456c4; --line: #e3e9f2; --ink: #16243b; --muted: #6b7a90; --gold: #ffb703; --ok: #1a8a4a; --bad: #c0392b; }
+      * { box-sizing: border-box; }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: var(--ink); background: #eef3fb; margin: 0; }
+      header { background: linear-gradient(135deg, var(--navy), var(--navy-2)); color: #fff; padding: 16px 20px; display: flex; align-items: center; gap: 12px; }
+      header .logo { width: 36px; height: 36px; border-radius: 9px; background: var(--gold); display: grid; place-items: center; font-size: 19px; }
+      header h1 { font-size: 16px; margin: 0; }
+      header a { margin-left: auto; color: #fff; text-decoration: none; font-size: 14px; background: rgba(255,255,255,.15); padding: 7px 12px; border-radius: 8px; }
+      main { max-width: 620px; margin: 22px auto; padding: 0 16px 40px; }
+      .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px 18px 20px; margin-bottom: 16px; }
+      .card h2 { font-size: 15px; margin: 0 0 4px; }
+      .card .sub { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
+      label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 5px; }
+      input { width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; font: inherit; font-size: 14px; outline: none; }
+      input:focus { border-color: var(--navy-2); }
+      .note { font-size: 12px; color: var(--muted); margin-top: 4px; }
+      .badge { font-size: 12px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+      .badge.ok { background: #e6f6ec; color: var(--ok); }
+      .badge.bad { background: #fdecea; color: var(--bad); }
+      button { background: var(--navy); color: #fff; border: 0; border-radius: 9px; padding: 11px 18px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+      button.ghost { background: #fff; color: var(--navy); border: 1px solid var(--line); }
+      button:disabled { opacity: .5; cursor: default; }
+      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      #msg { font-size: 14px; padding: 10px 12px; border-radius: 9px; margin-bottom: 14px; display: none; }
+      #msg.ok { display: block; background: #e6f6ec; color: var(--ok); }
+      #msg.err { display: block; background: #fdecea; color: var(--bad); }
+      .status { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="logo">⚙️</div>
+      <h1>Cài đặt · Trợ lý Tour</h1>
+      <a href="/">← Về chat</a>
+    </header>
+
+    <main>
+      <div id="msg"></div>
+
+      <div class="card">
+        <h2>Trạng thái</h2>
+        <p class="sub">Cấu hình lưu an toàn trong app (khách không thấy).</p>
+        <div class="status" id="status">Đang tải...</div>
+      </div>
+
+      <div class="card">
+        <h2>Mật khẩu admin</h2>
+        <p class="sub" id="adminSub">Mật khẩu để khóa trang cài đặt này.</p>
+        <label id="adminLabel">Mật khẩu admin</label>
+        <input id="adminPass" type="password" placeholder="Nhập mật khẩu admin" />
+        <div id="changeWrap" style="display:none">
+          <label>Đổi mật khẩu admin (để trống nếu không đổi)</label>
+          <input id="newAdminPass" type="password" placeholder="Mật khẩu mới (≥6 ký tự)" />
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>OpenAI</h2>
+        <p class="sub">Key này dùng để bot trả lời. Lấy ở platform.openai.com → API keys.</p>
+        <label>OpenAI API key</label>
+        <input id="openaiKey" type="password" placeholder="sk-... (để trống nếu không đổi)" />
+        <label>Model</label>
+        <input id="model" type="text" placeholder="gpt-4o-mini" />
+        <div class="note">Gợi ý: <code>gpt-4o-mini</code> (rẻ, nhanh) hoặc <code>gpt-4o</code> (mạnh hơn).</div>
+      </div>
+
+      <div class="card">
+        <h2>Telegram (tùy chọn)</h2>
+        <p class="sub">Để bật bot Telegram. Token lấy từ @BotFather.</p>
+        <label>Bot token</label>
+        <input id="tgToken" type="password" placeholder="123456:AA... (để trống nếu không đổi)" />
+        <label>Secret webhook (tự đặt 1 chuỗi ngẫu nhiên)</label>
+        <input id="tgSecret" type="text" placeholder="vd: mephil-2026-xyz" />
+        <div class="row" style="margin-top:12px">
+          <button class="ghost" id="hookBtn" type="button">🔗 Đăng ký webhook Telegram</button>
+          <span class="note" id="hookNote"></span>
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="saveBtn" type="button">💾 Lưu cài đặt</button>
+      </div>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      let hasAdmin = false;
+      const msg = (text, ok) => { const m = $("msg"); m.textContent = text; m.className = ok ? "ok" : "err"; window.scrollTo(0, 0); };
+
+      async function loadStatus() {
+        try {
+          const s = await (await fetch("/api/settings/status")).json();
+          hasAdmin = s.hasAdmin;
+          const b = (cond) => `<span class="badge ${cond ? "ok" : "bad"}">${cond ? "✓ đã có" : "✗ chưa"}</span>`;
+          $("status").innerHTML =
+            `<div>OpenAI key ${b(s.hasOpenAI)}</div>` +
+            `<div>Model: <b>${s.model || "-"}</b></div>` +
+            `<div>Telegram token ${b(s.hasTelegramToken)}</div>` +
+            `<div>Mật khẩu admin ${b(s.hasAdmin)}</div>`;
+          if (!hasAdmin) {
+            $("adminSub").textContent = "Lần đầu: hãy ĐẶT mật khẩu admin (≥6 ký tự) để khóa trang này.";
+            $("adminLabel").textContent = "Đặt mật khẩu admin (lần đầu)";
+            $("adminPass").placeholder = "Mật khẩu mới (≥6 ký tự)";
+            $("changeWrap").style.display = "none";
+          } else {
+            $("changeWrap").style.display = "block";
+          }
+        } catch { msg("Không tải được trạng thái.", false); }
+      }
+
+      $("saveBtn").onclick = async () => {
+        const adminPass = $("adminPass").value;
+        if (!adminPass) return msg("Nhập mật khẩu admin.", false);
+        const body = {
+          openaiKey: $("openaiKey").value,
+          model: $("model").value,
+          telegramBotToken: $("tgToken").value,
+          telegramSecret: $("tgSecret").value,
+        };
+        if (hasAdmin) { body.adminPassword = adminPass; body.newAdminPassword = $("newAdminPass").value || undefined; }
+        else { body.newAdminPassword = adminPass; }
+
+        $("saveBtn").disabled = true;
+        try {
+          const res = await fetch("/api/settings/save", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+          const data = await res.json();
+          if (data.ok) { msg("✓ Đã lưu cài đặt.", true); ["openaiKey","tgToken","tgSecret","newAdminPass"].forEach(i=>$(i)&&($(i).value="")); loadStatus(); }
+          else msg(data.error || "Lưu thất bại.", false);
+        } catch { msg("Lỗi kết nối.", false); }
+        $("saveBtn").disabled = false;
+      };
+
+      $("hookBtn").onclick = async () => {
+        const adminPass = $("adminPass").value;
+        if (!adminPass) return msg("Nhập mật khẩu admin trước khi đăng ký webhook.", false);
+        $("hookNote").textContent = "Đang đăng ký...";
+        try {
+          const res = await fetch("/api/settings/telegram-webhook", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ adminPassword: adminPass }) });
+          const data = await res.json();
+          if (data.ok) { $("hookNote").textContent = "✓ Đã trỏ webhook về " + data.webhookUrl; msg("✓ Webhook Telegram đã đăng ký. Nhắn bot /start để thử.", true); }
+          else { $("hookNote").textContent = ""; msg(data.error || (data.telegram && data.telegram.description) || "Đăng ký webhook thất bại.", false); }
+        } catch { $("hookNote").textContent = ""; msg("Lỗi kết nối.", false); }
+      };
+
+      loadStatus();
+    </script>
+  </body>
+</html>

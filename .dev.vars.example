@@ -1,12 +1,6 @@
-# Sao chép file này thành .dev.vars để chạy local (KHÔNG commit .dev.vars).
-# Trên Cloudflare Pages: đặt các giá trị này ở Settings → Environment variables (Secret).
+# Chạy local: cp .dev.vars.example .dev.vars (KHÔNG commit .dev.vars).
+# LƯU Ý: Key OpenAI, Telegram, mật khẩu admin KHÔNG đặt ở đây nữa —
+# tất cả cấu hình NGAY TRONG APP qua trang ⚙️ /settings.html (lưu vào KV).
+# File này chỉ còn tùy chọn không bí mật:
 
-ANTHROPIC_API_KEY=sk-ant-xxxxxxxx
-
-# Tùy chọn:
-MODEL=claude-opus-4-8
-MAX_TOKENS=2048
-
-# Chỉ cần nếu dùng bot Telegram:
-TELEGRAM_BOT_TOKEN=123456789:AAxxxxxxxxxxxxxxxxxxxxxxxx
-TELEGRAM_SECRET=mot-chuoi-ngau-nhien-tu-dat
+MODEL=gpt-4o-mini

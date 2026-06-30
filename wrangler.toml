@@ -2,14 +2,16 @@ name = "mephil-tour-ai"
 main = "src/index.js"
 compatibility_date = "2026-01-01"
 
-# Phục vụ web tĩnh trong public/ (assets-first: file tĩnh trả trước, không khớp thì Worker chạy).
+# Web tĩnh trong public/ (assets-first: file tĩnh trả trước, không khớp thì Worker chạy).
 [assets]
 directory = "./public"
 binding = "ASSETS"
 
-# Tùy chọn không bí mật. Bí mật (ANTHROPIC_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_SECRET)
-# đặt ở Cloudflare → Worker → Settings → Variables and Secrets (kiểu Secret),
-# hoặc local: file .dev.vars (xem .dev.vars.example).
+# Kho cấu hình của app (key OpenAI, model, Telegram, mật khẩu admin). Cấu hình qua trang ⚙️.
+[[kv_namespaces]]
+binding = "SETTINGS"
+id = "96ceb0a96321491b80dc2ad93ede62fa"
+
+# Model mặc định nếu chưa đặt trong Cài đặt.
 [vars]
-MODEL = "claude-opus-4-8"
-MAX_TOKENS = "2048"
+MODEL = "gpt-4o-mini"
