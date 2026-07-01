@@ -2,118 +2,115 @@
 <html lang="vi">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
     <title>Trợ lý Tour · Mê Philippines</title>
     <link rel="icon" href="/favicon-32.png" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#0b3d91" />
+    <meta name="theme-color" content="#0a5ca3" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Mê Tour AI" />
     <style>
       :root {
-        --navy: #0b3d91;
-        --navy-2: #1456c4;
-        --sky: #eaf2ff;
-        --gold: #ffb703;
-        --ink: #16243b;
-        --muted: #6b7a90;
-        --line: #e3e9f2;
-        --bot: #f4f7fc;
+        --blue: #0a5ca3;
+        --blue-2: #0b6ec4;
+        --blue-dark: #08477e;
+        --gold: #f7be1c;
+        --gold-dark: #e0a400;
+        --sky: #eaf3fb;
+        --ink: #14283f;
+        --muted: #6b7d92;
+        --line: #e2eaf3;
+        --bot: #f2f8fd;
       }
-      * { box-sizing: border-box; }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
       html, body { height: 100%; margin: 0; }
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
         color: var(--ink);
-        background: linear-gradient(180deg, #f7faff, #eef3fb);
+        background: linear-gradient(180deg, #f6fafe, #e9f2fb);
         display: flex; flex-direction: column; height: 100dvh;
       }
       header {
-        background: linear-gradient(135deg, var(--navy), var(--navy-2));
-        color: #fff; padding: 14px 18px; display: flex; align-items: center; gap: 12px;
-        box-shadow: 0 2px 12px rgba(11,61,145,.18);
+        background: linear-gradient(135deg, var(--blue-dark), var(--blue) 60%, var(--blue-2));
+        color: #fff; padding: 12px 16px; display: flex; align-items: center; gap: 11px;
+        box-shadow: 0 2px 14px rgba(10, 92, 163, 0.22);
+        padding-top: calc(12px + env(safe-area-inset-top));
       }
-      .logo {
-        width: 42px; height: 42px; border-radius: 10px; background: #fff;
-        object-fit: contain; flex: none; padding: 2px;
-      }
+      .logo { width: 42px; height: 42px; border-radius: 11px; background: #fff; object-fit: contain; padding: 3px; flex: none; }
+      .htext { min-width: 0; }
       header h1 { font-size: 16px; margin: 0; line-height: 1.2; }
-      header p { font-size: 12px; margin: 2px 0 0; opacity: .85; }
-      header .gear { margin-left: auto; color: #fff; text-decoration: none; font-size: 20px; opacity: .9; padding: 6px; }
-      header .gear:hover { opacity: 1; }
-      main {
-        flex: 1; overflow-y: auto; padding: 18px 14px 8px;
-        max-width: 760px; width: 100%; margin: 0 auto;
-      }
-      .msg { display: flex; margin: 10px 0; gap: 10px; }
-      .msg .av { width: 30px; height: 30px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 15px; }
+      header p { font-size: 12px; margin: 2px 0 0; opacity: .88; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      header .nav { margin-left: auto; display: flex; gap: 2px; flex: none; }
+      header .gear { color: #fff; text-decoration: none; font-size: 20px; opacity: .92; padding: 8px; border-radius: 8px; }
+      header .gear:active { background: rgba(255,255,255,.15); }
+
+      main { flex: 1; overflow-y: auto; padding: 16px 14px 8px; max-width: 780px; width: 100%; margin: 0 auto; -webkit-overflow-scrolling: touch; }
+      .msg { display: flex; margin: 12px 0; gap: 9px; }
+      .msg .av { width: 32px; height: 32px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 16px; }
       .msg.user { flex-direction: row-reverse; }
-      .bubble {
-        padding: 11px 14px; border-radius: 14px; max-width: 80%;
-        line-height: 1.55; font-size: 15px; white-space: pre-wrap; word-wrap: break-word;
-      }
-      .user .av { background: var(--navy); color: #fff; }
-      .user .bubble { background: var(--navy); color: #fff; border-bottom-right-radius: 4px; }
+      .bubble { padding: 11px 14px; border-radius: 16px; max-width: 82%; line-height: 1.55; font-size: 15px; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere; }
+      .user .av { background: var(--blue); color: #fff; }
+      .user .bubble { background: var(--blue); color: #fff; border-bottom-right-radius: 5px; }
       .bot .av { background: var(--gold); }
-      .bot .bubble { background: var(--bot); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
-      .bubble table { border-collapse: collapse; margin: 6px 0; font-size: 14px; }
+      .bot .bubble { background: var(--bot); border: 1px solid var(--line); border-bottom-left-radius: 5px; }
+      .bubble b { color: inherit; }
+      .bubble table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; margin: 6px 0; font-size: 14px; white-space: normal; }
       .bubble th, .bubble td { border: 1px solid var(--line); padding: 5px 9px; text-align: left; }
-      .bubble code { background: #e9eef7; padding: 1px 5px; border-radius: 5px; font-size: 13px; }
-      .hint { color: var(--muted); font-size: 13px; text-align: center; margin: 6px 0 14px; }
-      .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 8px; }
+      .bubble code { background: #e5eef8; padding: 1px 5px; border-radius: 5px; font-size: 13px; }
+
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 8px 41px; }
       .chip {
-        background: #fff; border: 1px solid var(--line); color: var(--navy);
-        padding: 7px 12px; border-radius: 20px; font-size: 13px; cursor: pointer;
+        background: #fff; border: 1px solid var(--line); color: var(--blue);
+        padding: 9px 13px; border-radius: 20px; font-size: 13.5px; cursor: pointer; line-height: 1.3;
       }
-      .chip:hover { background: var(--sky); }
-      footer {
-        padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
-        background: #fff; border-top: 1px solid var(--line);
-      }
-      .composer { max-width: 760px; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; }
+      .chip:active { background: var(--sky); }
+
+      footer { padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid var(--line); }
+      .composer { max-width: 780px; margin: 0 auto; display: flex; gap: 9px; align-items: flex-end; }
       textarea {
-        flex: 1; resize: none; border: 1px solid var(--line); border-radius: 12px;
-        padding: 11px 13px; font: inherit; font-size: 15px; max-height: 120px; outline: none;
+        flex: 1; resize: none; border: 1.5px solid var(--line); border-radius: 22px;
+        padding: 11px 16px; font: inherit; font-size: 16px; max-height: 120px; outline: none; line-height: 1.4;
       }
-      textarea:focus { border-color: var(--navy-2); }
-      button.send {
-        background: var(--navy); color: #fff; border: 0; border-radius: 12px;
-        width: 46px; height: 46px; font-size: 18px; cursor: pointer; flex: none;
-      }
-      button.send:disabled { opacity: .5; cursor: default; }
+      textarea:focus { border-color: var(--blue); }
+      button.send { background: var(--blue); color: #fff; border: 0; border-radius: 50%; width: 48px; height: 48px; font-size: 19px; cursor: pointer; flex: none; display: grid; place-items: center; }
+      button.send:disabled { opacity: .45; }
+      button.send:active { background: var(--blue-dark); }
       .typing span { display: inline-block; width: 7px; height: 7px; margin: 0 2px; border-radius: 50%; background: var(--muted); animation: b 1.2s infinite; }
       .typing span:nth-child(2) { animation-delay: .2s; }
       .typing span:nth-child(3) { animation-delay: .4s; }
       @keyframes b { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
+
+      @media (max-width: 560px) {
+        header h1 { font-size: 15px; }
+        header p { font-size: 11px; }
+        main { padding: 12px 10px 6px; }
+        .bubble { max-width: 86%; }
+        .chips { margin-left: 0; }
+        .chip { font-size: 13px; padding: 8px 12px; }
+      }
     </style>
   </head>
   <body>
     <header>
       <img class="logo" src="/icon-192.png" alt="Mê Philippines" />
-      <div>
+      <div class="htext">
         <h1>Trợ lý Tour · Mê Philippines</h1>
-        <p>Hỏi gì về tour cũng có đáp — theo đúng tài liệu công ty</p>
+        <p>Hỏi gì về tour cũng có đáp — theo đúng tài liệu</p>
       </div>
-      <a class="gear" href="/documents" title="Tài liệu tour">📚</a>
-      <a class="gear" href="/settings" title="Cài đặt" style="margin-left:0">⚙️</a>
+      <div class="nav">
+        <a class="gear" href="/documents" title="Tài liệu tour">📚</a>
+        <a class="gear" href="/settings" title="Cài đặt">⚙️</a>
+      </div>
     </header>
 
-    <main id="chat">
-      <div class="hint">Gợi ý câu hỏi:</div>
-      <div class="chips" id="chips">
-        <div class="chip">Tour Cebu Bohol giá bao nhiêu?</div>
-        <div class="chip">Chính sách hủy tour thế nào?</div>
-        <div class="chip">Trẻ em mấy tuổi tính giá trẻ em?</div>
-        <div class="chip">Mùa nào đi Philippines đẹp nhất?</div>
-      </div>
-    </main>
+    <main id="chat"></main>
 
     <footer>
       <div class="composer">
         <textarea id="input" rows="1" placeholder="Nhập câu hỏi về tour..." autocomplete="off"></textarea>
-        <button class="send" id="send" title="Gửi">➤</button>
+        <button class="send" id="send" title="Gửi" aria-label="Gửi">➤</button>
       </div>
     </footer>
 
@@ -121,13 +118,19 @@
       const chat = document.getElementById("chat");
       const input = document.getElementById("input");
       const sendBtn = document.getElementById("send");
-      const chips = document.getElementById("chips");
       let history = [];
       let busy = false;
 
+      const STARTERS = [
+        "Người Việt đi Philippines có cần visa không?",
+        "Qua Philippines mua SIM ở đâu, hãng nào?",
+        "Đổi tiền peso ở đâu, tỷ giá thế nào?",
+        "Mùa nào đi Philippines đẹp nhất?",
+        "Nhập cảnh cần chuẩn bị giấy tờ gì?",
+      ];
+
       const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 
-      // Render markdown rất gọn: bảng, **đậm**, `code`, gạch đầu dòng, xuống dòng.
       function render(md) {
         const lines = esc(md).split("\n");
         let html = "", i = 0;
@@ -160,9 +163,29 @@
         return wrap.querySelector(".bubble");
       }
 
+      function showChips() {
+        const box = document.createElement("div");
+        box.className = "chips";
+        box.id = "chips";
+        box.innerHTML = STARTERS.map((q) => `<span class="chip">${q}</span>`).join("");
+        chat.appendChild(box);
+        box.addEventListener("click", (e) => {
+          if (e.target.classList.contains("chip")) ask(e.target.textContent);
+        });
+        chat.scrollTop = chat.scrollHeight;
+      }
+
+      // Lời chào mở đầu + câu hỏi gợi ý
+      function welcome() {
+        add("bot",
+          "Xin chào 🌴 Mình là **trợ lý tour Mê Philippines**. Bạn cứ hỏi bất kỳ điều gì về tour, visa, SIM, tiền tệ, điểm đến, an toàn... mình trả lời theo đúng tài liệu công ty.\n\nBạn muốn hỏi gì trước? Gợi ý vài câu:");
+        showChips();
+      }
+
       async function ask(question) {
         if (busy || !question.trim()) return;
         busy = true; sendBtn.disabled = true;
+        const chips = document.getElementById("chips");
         if (chips) chips.remove();
         add("user", question);
         history.push({ role: "user", content: question });
@@ -186,7 +209,6 @@
         } finally {
           busy = false; sendBtn.disabled = false;
           chat.scrollTop = chat.scrollHeight;
-          input.focus();
         }
       }
 
@@ -198,9 +220,8 @@
         input.style.height = "auto";
         input.style.height = Math.min(input.scrollHeight, 120) + "px";
       });
-      chips.addEventListener("click", (e) => {
-        if (e.target.classList.contains("chip")) ask(e.target.textContent);
-      });
+
+      welcome();
     </script>
   </body>
 </html>
