@@ -2,6 +2,10 @@ name = "mephil-tour-ai"
 main = "src/index.js"
 compatibility_date = "2026-01-01"
 
+# Chạy Worker ở vùng gần backend (OpenAI/US) — tránh OpenAI chặn request từ VN.
+[placement]
+mode = "smart"
+
 # Web tĩnh trong public/ (assets-first: file tĩnh trả trước, không khớp thì Worker chạy).
 [assets]
 directory = "./public"

@@ -4,3 +4,5 @@ node_modules
 .DS_Store
 # Tự sinh khi build từ knowledge/*.md
 src/knowledge.js
+# Script nạp dữ liệu 1 lần (đường dẫn máy cá nhân)
+scripts/import-knowledge.py
