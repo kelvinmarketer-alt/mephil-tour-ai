@@ -53,7 +53,7 @@
       .bubble { padding: 11px 14px; border-radius: 16px; max-width: 82%; line-height: 1.55; font-size: 15px; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere; }
       .user .av { background: var(--blue); color: #fff; }
       .user .bubble { background: var(--blue); color: #fff; border-bottom-right-radius: 5px; }
-      .bot .av { background: var(--gold); }
+      .bot img.av { background: #fff; object-fit: contain; padding: 1px; border: 1px solid var(--line); }
       .bot .bubble { background: var(--bot); border: 1px solid var(--line); border-bottom-left-radius: 5px; }
       .bubble b { color: inherit; }
       .bubble table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; margin: 6px 0; font-size: 14px; white-space: normal; }
@@ -156,7 +156,8 @@
       function add(role, text) {
         const wrap = document.createElement("div");
         wrap.className = "msg " + role;
-        wrap.innerHTML = `<div class="av">${role === "user" ? "🧑" : "🌴"}</div><div class="bubble"></div>`;
+        const av = role === "user" ? '<div class="av">🧑</div>' : '<img class="av" src="/icon-192.png" alt="Mê Philippines" />';
+        wrap.innerHTML = `${av}<div class="bubble"></div>`;
         wrap.querySelector(".bubble").innerHTML = role === "bot" ? render(text) : esc(text);
         chat.appendChild(wrap);
         chat.scrollTop = chat.scrollHeight;
