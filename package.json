@@ -1,15 +1,16 @@
 {
-  "name": "mephil-tour-ai",
+  "name": "mephil-tour",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Trợ lý AI hỏi-đáp tour Mê Philippines (web + Telegram) cho nhân viên sale",
   "scripts": {
-    "build": "node scripts/build-knowledge.mjs",
-    "dev": "npm run build && wrangler dev",
-    "deploy": "npm run build && wrangler deploy"
+    "build": "node scripts/build-knowledge.mjs && esbuild src/index.js --bundle --format=esm --outfile=public/_worker.js",
+    "dev": "npm run build && wrangler pages dev public",
+    "deploy": "npm run build && wrangler pages deploy public"
   },
   "devDependencies": {
+    "esbuild": "^0.24.0",
     "wrangler": "^3.114.0"
   }
 }

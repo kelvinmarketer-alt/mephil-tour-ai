@@ -1,20 +1,13 @@
-name = "mephil-tour-ai"
-main = "src/index.js"
+name = "mephil-tour"
+pages_build_output_dir = "public"
 compatibility_date = "2026-01-01"
 
-# Web tĩnh trong public/ (assets-first: file tĩnh trả trước, không khớp thì Worker chạy).
-[assets]
-directory = "./public"
-binding = "ASSETS"
-
-# Kho cấu hình của app (key OpenAI, model, Telegram, mật khẩu admin). Cấu hình qua trang ⚙️.
+# Kho cấu hình của app (giữ nguyên KV cũ → admin + key OpenAI + 18 tài liệu còn đủ).
 [[kv_namespaces]]
 binding = "SETTINGS"
 id = "96ceb0a96321491b80dc2ad93ede62fa"
 
-# Model mặc định nếu chưa đặt trong Cài đặt.
 [vars]
 MODEL = "gpt-4o-mini"
-# Gọi OpenAI qua Cloudflare AI Gateway (egress từ vùng được hỗ trợ, né chặn VN).
-# Giữ nguyên key OpenAI của user (BYOK provider-native endpoint). Gateway "mephil" tắt xác thực.
+# Gọi OpenAI qua AI Gateway "mephil" (né chặn VN, giữ key OpenAI của user).
 OPENAI_BASE = "https://gateway.ai.cloudflare.com/v1/4649c2cb98968b25b5ba0757c08cf345/mephil/openai/chat/completions"
