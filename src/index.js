@@ -53,7 +53,7 @@ async function handleAsk(request, env) {
     return json({ error: "Chưa cấu hình OpenAI API key. Mở trang Cài đặt (⚙️) để nhập key nhé." }, 503);
 
   const knowledge = await buildKnowledge(env);
-  const answer = await askAI({ question, history: body.history || [], apiKey: cfg.openaiKey, model: cfg.model, knowledge });
+  const answer = await askAI({ question, history: body.history || [], apiKey: cfg.openaiKey, model: cfg.model, knowledge, base: cfg.base });
   return json({ answer });
 }
 
@@ -96,7 +96,7 @@ async function replyTelegram(cfg, chatId, text, knowledge) {
     answer = "Bot chưa được cấu hình OpenAI API key. Báo quản trị viên vào trang Cài đặt giúp nhé.";
   } else {
     try {
-      answer = await askAI({ question: text, history: [], apiKey: cfg.openaiKey, model: cfg.model, knowledge });
+      answer = await askAI({ question: text, history: [], apiKey: cfg.openaiKey, model: cfg.model, knowledge, base: cfg.base });
     } catch {
       answer = "Xin lỗi, hiện chưa trả lời được. Bạn thử lại sau giúp mình nhé.";
     }

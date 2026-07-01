@@ -9,8 +9,9 @@ export async function sha256(text) {
 export async function getConfig(env) {
   const kv = env.SETTINGS;
   const fallbackModel = env.MODEL || "gpt-4o-mini";
+  const base = env.OPENAI_BASE || "https://api.openai.com/v1/chat/completions";
   if (!kv) {
-    return { openaiKey: null, model: fallbackModel, tgToken: null, tgSecret: null, adminHash: null };
+    return { openaiKey: null, model: fallbackModel, base, tgToken: null, tgSecret: null, adminHash: null };
   }
   const [openaiKey, model, tgToken, tgSecret, adminHash] = await Promise.all([
     kv.get("openai_api_key"),
@@ -22,6 +23,7 @@ export async function getConfig(env) {
   return {
     openaiKey,
     model: model || fallbackModel,
+    base,
     tgToken,
     tgSecret,
     adminHash,

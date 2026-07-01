@@ -2,10 +2,6 @@ name = "mephil-tour-ai"
 main = "src/index.js"
 compatibility_date = "2026-01-01"
 
-# Chạy Worker ở vùng gần backend (OpenAI/US) — tránh OpenAI chặn request từ VN.
-[placement]
-mode = "smart"
-
 # Web tĩnh trong public/ (assets-first: file tĩnh trả trước, không khớp thì Worker chạy).
 [assets]
 directory = "./public"
@@ -19,3 +15,6 @@ id = "96ceb0a96321491b80dc2ad93ede62fa"
 # Model mặc định nếu chưa đặt trong Cài đặt.
 [vars]
 MODEL = "gpt-4o-mini"
+# Gọi OpenAI qua Cloudflare AI Gateway (egress từ vùng được hỗ trợ, né chặn VN).
+# Giữ nguyên key OpenAI của user (BYOK provider-native endpoint). Gateway "mephil" tắt xác thực.
+OPENAI_BASE = "https://gateway.ai.cloudflare.com/v1/4649c2cb98968b25b5ba0757c08cf345/mephil/openai/chat/completions"

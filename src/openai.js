@@ -1,7 +1,7 @@
 // Gọi OpenAI: nạp toàn bộ tài liệu tour (do caller dựng từ KV) vào system message rồi hỏi.
 import { SYSTEM_INSTRUCTIONS } from "./system-prompt.js";
 
-const API_URL = "https://api.openai.com/v1/chat/completions";
+const DEFAULT_API_URL = "https://api.openai.com/v1/chat/completions";
 
 // Chuẩn hóa lịch sử chat thành user/assistant xen kẽ, kết thúc bằng assistant.
 function normalizeHistory(history) {
@@ -20,7 +20,7 @@ function normalizeHistory(history) {
   return out.slice(-8);
 }
 
-export async function askAI({ question, history = [], apiKey, model, knowledge }) {
+export async function askAI({ question, history = [], apiKey, model, knowledge, base }) {
   if (!apiKey) throw new Error("Chưa cấu hình OpenAI API key");
 
   const messages = [
@@ -35,7 +35,7 @@ export async function askAI({ question, history = [], apiKey, model, knowledge }
     { role: "user", content: String(question).slice(0, 4000) },
   ];
 
-  const res = await fetch(API_URL, {
+  const res = await fetch(base || DEFAULT_API_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
