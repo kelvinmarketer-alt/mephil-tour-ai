@@ -1,7 +1,7 @@
 // Cloudflare Worker: web tĩnh (public/) + hỏi-đáp (OpenAI) + Telegram + Cài đặt + Tài liệu — tất cả trong app.
 import { askAI } from "./openai.js";
 import { KNOWLEDGE } from "./knowledge.js";
-import { getConfig, isAdmin, sha256, getDocuments, saveDocuments, getPlaces, savePlaces, getGoogleMapsKey } from "./config.js";
+import { getConfig, isAdmin, sha256, getDocuments, saveDocuments, getPlaces, savePlaces, getGoogleMapsKey, getSupabase } from "./config.js";
 
 export default {
   async fetch(request, env, ctx) {
@@ -128,6 +128,7 @@ async function handleStatus(env) {
   const docs = await getDocuments(env);
   const places = await getPlaces(env);
   const mapsKey = await getGoogleMapsKey(env);
+  const sb = await getSupabase(env);
   return json({
     hasAdmin: !!cfg.adminHash,
     hasOpenAI: !!cfg.openaiKey,
@@ -137,6 +138,7 @@ async function handleStatus(env) {
     docCount: docs.length,
     hasMapsKey: !!mapsKey,
     placeCount: places.length,
+    hasSupabase: !!(sb.url && sb.key),
   });
 }
 
@@ -165,6 +167,8 @@ async function handleSave(request, env) {
   await put("telegram_bot_token", b.telegramBotToken);
   await put("telegram_secret", b.telegramSecret);
   await put("google_maps_api_key", b.googleMapsKey);
+  await put("supabase_url", b.supabaseUrl);
+  await put("supabase_service_key", b.supabaseKey);
 
   return json({ ok: true });
 }
@@ -271,7 +275,10 @@ async function handlePlacesDelete(request, env) {
   return json({ ok: true });
 }
 
-// Tải 1 ảnh lên (đã nén phía client) → lưu KV key "photo:<id>", trả URL /img/<id>.
+// Tải 1 ảnh lên: nếu đã cấu hình Supabase → lưu Supabase Storage (hợp cho NHIỀU ảnh);
+// nếu chưa → fallback lưu KV "photo:<id>" (trả /img/<id>) như cũ.
+const SB_BUCKET = "mephil-images";
+
 async function handlePlacesUpload(request, env) {
   if (!env.SETTINGS) return json({ error: "Chưa gắn kho ảnh (KV)." }, 500);
   const ct = (request.headers.get("content-type") || "").toLowerCase();
@@ -279,9 +286,42 @@ async function handlePlacesUpload(request, env) {
   const buf = await request.arrayBuffer();
   if (!buf.byteLength) return json({ error: "Ảnh rỗng." }, 400);
   if (buf.byteLength > 6 * 1024 * 1024) return json({ error: "Ảnh quá lớn (>6MB)." }, 413);
+
+  const sb = await getSupabase(env);
+  if (sb.url && sb.key) {
+    try {
+      return json({ url: await uploadToSupabase(sb, buf, ct) });
+    } catch (e) {
+      // Supabase lỗi → vẫn fallback KV để không mất ảnh (báo mềm ở log).
+    }
+  }
   const id = crypto.randomUUID();
   await env.SETTINGS.put("photo:" + id, buf, { metadata: { ct } });
   return json({ url: "/img/" + id });
+}
+
+async function uploadToSupabase(sb, buf, ct) {
+  const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
+  const key = crypto.randomUUID() + "." + ext;
+  const headers = { Authorization: `Bearer ${sb.key}`, apikey: sb.key };
+  const doPut = () =>
+    fetch(`${sb.url}/storage/v1/object/${SB_BUCKET}/${key}`, {
+      method: "POST",
+      headers: { ...headers, "content-type": ct, "x-upsert": "true", "cache-control": "31536000" },
+      body: buf,
+    });
+  let up = await doPut();
+  if (!up.ok && (up.status === 400 || up.status === 404)) {
+    // Bucket chưa có → tạo (public) rồi thử lại.
+    await fetch(`${sb.url}/storage/v1/bucket`, {
+      method: "POST",
+      headers: { ...headers, "content-type": "application/json" },
+      body: JSON.stringify({ id: SB_BUCKET, name: SB_BUCKET, public: true }),
+    }).catch(() => {});
+    up = await doPut();
+  }
+  if (!up.ok) throw new Error("supabase " + up.status + " " + (await up.text().catch(() => "")));
+  return `${sb.url}/storage/v1/object/public/${SB_BUCKET}/${key}`;
 }
 
 // Phục vụ ảnh từ KV (công khai, cache lâu).

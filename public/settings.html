@@ -86,6 +86,16 @@
       </div>
 
       <div class="card">
+        <h2>Supabase Storage (kho ảnh upload)</h2>
+        <p class="sub">Để lưu ảnh khi upload nhiều (địa điểm/tour). Vào supabase.com (tài khoản của bạn) → chọn/ tạo project → <b>Settings → API</b> → copy <b>Project URL</b> + <b>service_role key</b>. Để trống thì ảnh tạm lưu trên Cloudflare.</p>
+        <label>Project URL</label>
+        <input id="sbUrl" type="text" placeholder="https://xxxx.supabase.co (để trống nếu không đổi)" />
+        <label>service_role key</label>
+        <input id="sbKey" type="password" placeholder="eyJhbGci... (để trống nếu không đổi)" />
+        <div class="note">⚠️ service_role key là bí mật — lưu server-side, khách không thấy. Bucket <b>mephil-images</b> (công khai đọc) sẽ tự tạo khi upload ảnh đầu tiên.</div>
+      </div>
+
+      <div class="card">
         <h2>Telegram (tùy chọn)</h2>
         <p class="sub">Để bật bot Telegram. Token lấy từ @BotFather.</p>
         <label>Bot token</label>
@@ -118,6 +128,7 @@
             `<div>Model: <b>${s.model || "-"}</b></div>` +
             `<div>Telegram token ${b(s.hasTelegramToken)}</div>` +
             `<div>Google Maps key ${b(s.hasMapsKey)}</div>` +
+            `<div>Supabase (kho ảnh) ${b(s.hasSupabase)}</div>` +
             `<div>Địa điểm bản đồ: <b>${s.placeCount ?? 0}</b></div>` +
             `<div>Mật khẩu admin ${b(s.hasAdmin)}</div>`;
           if (!hasAdmin) {
@@ -140,6 +151,8 @@
           telegramBotToken: $("tgToken").value,
           telegramSecret: $("tgSecret").value,
           googleMapsKey: $("mapsKey").value,
+          supabaseUrl: $("sbUrl").value,
+          supabaseKey: $("sbKey").value,
         };
         if (hasAdmin) { body.adminPassword = adminPass; body.newAdminPassword = $("newAdminPass").value || undefined; }
         else { body.newAdminPassword = adminPass; }
@@ -148,7 +161,7 @@
         try {
           const res = await fetch("/api/settings/save", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
           const data = await res.json();
-          if (data.ok) { msg("✓ Đã lưu cài đặt.", true); ["openaiKey","tgToken","tgSecret","newAdminPass","mapsKey"].forEach(i=>$(i)&&($(i).value="")); loadStatus(); }
+          if (data.ok) { msg("✓ Đã lưu cài đặt.", true); ["openaiKey","tgToken","tgSecret","newAdminPass","mapsKey","sbKey"].forEach(i=>$(i)&&($(i).value="")); loadStatus(); }
           else msg(data.error || "Lưu thất bại.", false);
         } catch { msg("Lỗi kết nối.", false); }
         $("saveBtn").disabled = false;

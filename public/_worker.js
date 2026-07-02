@@ -144,6 +144,14 @@ async function getGoogleMapsKey(env) {
   if (!env.SETTINGS) return null;
   return await env.SETTINGS.get("google_maps_api_key");
 }
+async function getSupabase(env) {
+  if (!env.SETTINGS) return { url: null, key: null };
+  const [url, key] = await Promise.all([
+    env.SETTINGS.get("supabase_url"),
+    env.SETTINGS.get("supabase_service_key")
+  ]);
+  return { url: url ? url.replace(/\/$/, "") : null, key: key || null };
+}
 
 // src/index.js
 var src_default = {
@@ -260,6 +268,7 @@ async function handleStatus(env) {
   const docs = await getDocuments(env);
   const places = await getPlaces(env);
   const mapsKey = await getGoogleMapsKey(env);
+  const sb = await getSupabase(env);
   return json({
     hasAdmin: !!cfg.adminHash,
     hasOpenAI: !!cfg.openaiKey,
@@ -268,7 +277,8 @@ async function handleStatus(env) {
     hasTelegramSecret: !!cfg.tgSecret,
     docCount: docs.length,
     hasMapsKey: !!mapsKey,
-    placeCount: places.length
+    placeCount: places.length,
+    hasSupabase: !!(sb.url && sb.key)
   });
 }
 async function handleSave(request, env) {
@@ -294,6 +304,8 @@ async function handleSave(request, env) {
   await put("telegram_bot_token", b.telegramBotToken);
   await put("telegram_secret", b.telegramSecret);
   await put("google_maps_api_key", b.googleMapsKey);
+  await put("supabase_url", b.supabaseUrl);
+  await put("supabase_service_key", b.supabaseKey);
   return json({ ok: true });
 }
 async function handleSetWebhook(request, env, url) {
@@ -381,6 +393,7 @@ async function handlePlacesDelete(request, env) {
   await savePlaces(env, places);
   return json({ ok: true });
 }
+var SB_BUCKET = "mephil-images";
 async function handlePlacesUpload(request, env) {
   if (!env.SETTINGS) return json({ error: "Ch\u01B0a g\u1EAFn kho \u1EA3nh (KV)." }, 500);
   const ct = (request.headers.get("content-type") || "").toLowerCase();
@@ -388,9 +401,38 @@ async function handlePlacesUpload(request, env) {
   const buf = await request.arrayBuffer();
   if (!buf.byteLength) return json({ error: "\u1EA2nh r\u1ED7ng." }, 400);
   if (buf.byteLength > 6 * 1024 * 1024) return json({ error: "\u1EA2nh qu\xE1 l\u1EDBn (>6MB)." }, 413);
+  const sb = await getSupabase(env);
+  if (sb.url && sb.key) {
+    try {
+      return json({ url: await uploadToSupabase(sb, buf, ct) });
+    } catch (e) {
+    }
+  }
   const id = crypto.randomUUID();
   await env.SETTINGS.put("photo:" + id, buf, { metadata: { ct } });
   return json({ url: "/img/" + id });
+}
+async function uploadToSupabase(sb, buf, ct) {
+  const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
+  const key = crypto.randomUUID() + "." + ext;
+  const headers = { Authorization: `Bearer ${sb.key}`, apikey: sb.key };
+  const doPut = () => fetch(`${sb.url}/storage/v1/object/${SB_BUCKET}/${key}`, {
+    method: "POST",
+    headers: { ...headers, "content-type": ct, "x-upsert": "true", "cache-control": "31536000" },
+    body: buf
+  });
+  let up = await doPut();
+  if (!up.ok && (up.status === 400 || up.status === 404)) {
+    await fetch(`${sb.url}/storage/v1/bucket`, {
+      method: "POST",
+      headers: { ...headers, "content-type": "application/json" },
+      body: JSON.stringify({ id: SB_BUCKET, name: SB_BUCKET, public: true })
+    }).catch(() => {
+    });
+    up = await doPut();
+  }
+  if (!up.ok) throw new Error("supabase " + up.status + " " + await up.text().catch(() => ""));
+  return `${sb.url}/storage/v1/object/public/${SB_BUCKET}/${key}`;
 }
 async function handleImg(id, env) {
   if (!env.SETTINGS || !id) return new Response("not found", { status: 404 });

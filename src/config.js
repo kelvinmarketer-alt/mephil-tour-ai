@@ -77,3 +77,13 @@ export async function getGoogleMapsKey(env) {
   if (!env.SETTINGS) return null;
   return await env.SETTINGS.get("google_maps_api_key");
 }
+
+// Cấu hình Supabase Storage (lưu ảnh upload): URL project + service_role key. Cấu hình qua ⚙️.
+export async function getSupabase(env) {
+  if (!env.SETTINGS) return { url: null, key: null };
+  const [url, key] = await Promise.all([
+    env.SETTINGS.get("supabase_url"),
+    env.SETTINGS.get("supabase_service_key"),
+  ]);
+  return { url: url ? url.replace(/\/$/, "") : null, key: key || null };
+}
