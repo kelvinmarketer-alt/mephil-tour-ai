@@ -100,6 +100,7 @@
         <p>Hỏi gì về tour cũng có đáp — theo đúng tài liệu</p>
       </div>
       <div class="nav">
+        <a class="gear" href="#" id="newchat" title="Cuộc trò chuyện mới (xóa hội thoại)">🗑️</a>
         <a class="gear" href="/map" title="Bản đồ địa điểm">🗺️</a>
         <a class="gear" href="/documents" title="Tài liệu tour">📚</a>
         <a class="gear" href="/settings" title="Cài đặt">⚙️</a>
@@ -122,18 +123,17 @@
       let history = [];
       let busy = false;
       const HKEY = "mp_chat_v1";
-      const HEXPIRY = 3 * 60 * 60 * 1000; // giữ tối đa 3 giờ
 
       function saveHistory() {
-        try { sessionStorage.setItem(HKEY, JSON.stringify({ ts: Date.now(), history })); } catch (e) {}
+        // Lưu bền: giữ qua F5 / đóng-mở trình duyệt, chỉ mất khi xóa cache. Giữ tối đa 60 tin gần nhất.
+        try { localStorage.setItem(HKEY, JSON.stringify({ ts: Date.now(), history: history.slice(-60) })); } catch (e) {}
       }
-      function isReload() {
-        try {
-          const e = performance.getEntriesByType("navigation")[0];
-          if (e && e.type) return e.type === "reload";
-        } catch (e) {}
-        try { return performance.navigation && performance.navigation.type === 1; } catch (e) {}
-        return false;
+      function newChat() {
+        if (history.length && !confirm("Xóa hội thoại hiện tại và bắt đầu cuộc trò chuyện mới?")) return;
+        try { localStorage.removeItem(HKEY); } catch (e) {}
+        history = [];
+        chat.innerHTML = "";
+        welcome();
       }
 
       const STARTERS = [
@@ -239,20 +239,19 @@
         input.style.height = Math.min(input.scrollHeight, 120) + "px";
       });
 
-      // Khôi phục hội thoại nếu là chuyển-trang-rồi-quay-lại; xóa nếu reload / tắt trình duyệt / quá 3 giờ.
+      const nc = document.getElementById("newchat");
+      if (nc) nc.addEventListener("click", (e) => { e.preventDefault(); newChat(); });
+
+      // Khôi phục hội thoại đã lưu (GIỮ qua F5 / đóng-mở trình duyệt; chỉ mất khi xóa cache hoặc bấm 🗑️).
       (function init() {
         let saved = null;
-        try { saved = JSON.parse(sessionStorage.getItem(HKEY) || "null"); } catch (e) {}
-        const valid = saved && Array.isArray(saved.history) && saved.history.length &&
-          (Date.now() - saved.ts < HEXPIRY);
-        if (isReload() || !valid) {
-          try { sessionStorage.removeItem(HKEY); } catch (e) {}
-          history = [];
-          welcome();
-        } else {
+        try { saved = JSON.parse(localStorage.getItem(HKEY) || "null"); } catch (e) {}
+        if (saved && Array.isArray(saved.history) && saved.history.length) {
           history = saved.history;
           for (const m of history) add(m.role === "user" ? "user" : "bot", m.content);
           chat.scrollTop = chat.scrollHeight;
+        } else {
+          welcome();
         }
       })();
     </script>
