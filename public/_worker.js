@@ -107,7 +107,7 @@ async function getConfig(env) {
   };
 }
 async function isAdmin(env, password) {
-  if (!password) return false;
+  if (typeof password !== "string" || !password) return false;
   const { adminHash } = await getConfig(env);
   if (!adminHash) return false;
   return await sha256(password) === adminHash;
@@ -126,12 +126,31 @@ async function getDocuments(env) {
 async function saveDocuments(env, docs) {
   await env.SETTINGS.put("documents", JSON.stringify(docs));
 }
+async function getPlaces(env) {
+  if (!env.SETTINGS) return [];
+  const raw = await env.SETTINGS.get("places");
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+async function savePlaces(env, places) {
+  await env.SETTINGS.put("places", JSON.stringify(places));
+}
+async function getGoogleMapsKey(env) {
+  if (!env.SETTINGS) return null;
+  return await env.SETTINGS.get("google_maps_api_key");
+}
 
 // src/index.js
 var src_default = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const p = url.pathname;
+    if (p === "/_worker.js") return new Response("Not found", { status: 404 });
     try {
       if (request.method === "POST" && p === "/api/ask") return await handleAsk(request, env);
       if (request.method === "POST" && p === "/api/telegram") return await handleTelegram(request, env, ctx);
@@ -142,6 +161,12 @@ var src_default = {
       if (request.method === "POST" && p === "/api/docs/list") return await handleDocsList(request, env);
       if (request.method === "POST" && p === "/api/docs/save") return await handleDocsSave(request, env);
       if (request.method === "POST" && p === "/api/docs/delete") return await handleDocsDelete(request, env);
+      if (request.method === "POST" && p === "/api/places/list") return await handlePlacesList(request, env);
+      if (request.method === "POST" && p === "/api/places/save") return await handlePlacesSave(request, env);
+      if (request.method === "POST" && p === "/api/places/delete") return await handlePlacesDelete(request, env);
+      if (request.method === "POST" && p === "/api/places/mapkey") return await handlePlacesMapKey(request, env);
+      if (request.method === "POST" && p === "/api/places/upload") return await handlePlacesUpload(request, env);
+      if (request.method === "GET" && p.startsWith("/img/")) return await handleImg(p.slice(5), env);
     } catch (e) {
       return json({ error: "L\u1ED7i: " + e.message }, 500);
     }
@@ -233,13 +258,17 @@ async function tgSend(token, chatId, text) {
 async function handleStatus(env) {
   const cfg = await getConfig(env);
   const docs = await getDocuments(env);
+  const places = await getPlaces(env);
+  const mapsKey = await getGoogleMapsKey(env);
   return json({
     hasAdmin: !!cfg.adminHash,
     hasOpenAI: !!cfg.openaiKey,
     model: cfg.model,
     hasTelegramToken: !!cfg.tgToken,
     hasTelegramSecret: !!cfg.tgSecret,
-    docCount: docs.length
+    docCount: docs.length,
+    hasMapsKey: !!mapsKey,
+    placeCount: places.length
   });
 }
 async function handleSave(request, env) {
@@ -264,6 +293,7 @@ async function handleSave(request, env) {
   await put("model", b.model);
   await put("telegram_bot_token", b.telegramBotToken);
   await put("telegram_secret", b.telegramSecret);
+  await put("google_maps_api_key", b.googleMapsKey);
   return json({ ok: true });
 }
 async function handleSetWebhook(request, env, url) {
@@ -312,6 +342,71 @@ async function handleDocsDelete(request, env) {
   const docs = (await getDocuments(env)).filter((d) => d.id !== b.id);
   await saveDocuments(env, docs);
   return json({ ok: true });
+}
+var PLACE_CATS = ["an", "cafe", "choi", "checkin"];
+async function handlePlacesList(request, env) {
+  return json({ places: await getPlaces(env) });
+}
+async function handlePlacesSave(request, env) {
+  const b = await request.json().catch(() => ({}));
+  const name = (b.name || "").toString().trim();
+  const lat = Number(b.lat);
+  const lng = Number(b.lng);
+  if (!name) return json({ error: "Thi\u1EBFu t\xEAn \u0111\u1ECBa \u0111i\u1EC3m." }, 400);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return json({ error: "Thi\u1EBFu to\u1EA1 \u0111\u1ED9 \u0111\u1ECBa \u0111i\u1EC3m (ch\u1ECDn tr\xEAn b\u1EA3n \u0111\u1ED3)." }, 400);
+  const fields = {
+    name,
+    lat,
+    lng,
+    category: PLACE_CATS.includes(b.category) ? b.category : "an",
+    description: (b.description || "").toString(),
+    photos: Array.isArray(b.photos) ? b.photos.filter((x) => typeof x === "string" && x).slice(0, 15) : b.photoUrl ? [(b.photoUrl || "").toString()] : [],
+    address: (b.address || "").toString().trim(),
+    rating: b.rating === "" || b.rating == null ? null : Number(b.rating)
+  };
+  const places = await getPlaces(env);
+  if (b.id) {
+    const i = places.findIndex((x) => x.id === b.id);
+    if (i >= 0) places[i] = { ...places[i], ...fields, updatedAt: Date.now() };
+    else places.push({ id: b.id, ...fields, createdAt: Date.now(), updatedAt: Date.now() });
+  } else {
+    places.push({ id: crypto.randomUUID(), ...fields, createdAt: Date.now(), updatedAt: Date.now() });
+  }
+  await savePlaces(env, places);
+  return json({ ok: true });
+}
+async function handlePlacesDelete(request, env) {
+  const b = await request.json().catch(() => ({}));
+  const places = (await getPlaces(env)).filter((x) => x.id !== b.id);
+  await savePlaces(env, places);
+  return json({ ok: true });
+}
+async function handlePlacesUpload(request, env) {
+  if (!env.SETTINGS) return json({ error: "Ch\u01B0a g\u1EAFn kho \u1EA3nh (KV)." }, 500);
+  const ct = (request.headers.get("content-type") || "").toLowerCase();
+  if (!ct.startsWith("image/")) return json({ error: "Ch\u1EC9 nh\u1EADn t\u1EC7p \u1EA3nh." }, 400);
+  const buf = await request.arrayBuffer();
+  if (!buf.byteLength) return json({ error: "\u1EA2nh r\u1ED7ng." }, 400);
+  if (buf.byteLength > 6 * 1024 * 1024) return json({ error: "\u1EA2nh qu\xE1 l\u1EDBn (>6MB)." }, 413);
+  const id = crypto.randomUUID();
+  await env.SETTINGS.put("photo:" + id, buf, { metadata: { ct } });
+  return json({ url: "/img/" + id });
+}
+async function handleImg(id, env) {
+  if (!env.SETTINGS || !id) return new Response("not found", { status: 404 });
+  const { value, metadata } = await env.SETTINGS.getWithMetadata("photo:" + id, { type: "arrayBuffer" });
+  if (!value) return new Response("not found", { status: 404 });
+  return new Response(value, {
+    headers: {
+      "content-type": metadata && metadata.ct || "image/jpeg",
+      "cache-control": "public, max-age=31536000, immutable"
+    }
+  });
+}
+async function handlePlacesMapKey(request, env) {
+  const key = await getGoogleMapsKey(env);
+  if (!key) return json({ error: "Ch\u01B0a c\u1EA5u h\xECnh Google Maps API key. M\u1EDF trang C\xE0i \u0111\u1EB7t (\u2699\uFE0F) \u0111\u1EC3 nh\u1EADp nh\xE9." }, 503);
+  return json({ mapKey: key });
 }
 export {
   src_default as default

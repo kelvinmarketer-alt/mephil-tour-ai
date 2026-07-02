@@ -44,7 +44,7 @@
     <header>
       <img class="logo" src="/icon-192.png" alt="Mê Philippines" />
       <h1>Cài đặt · Trợ lý Tour</h1>
-      <div class="nav"><a href="/documents">📚 Tài liệu</a><a href="/">← Chat</a></div>
+      <div class="nav"><a href="/map">🗺️ Bản đồ</a><a href="/documents">📚 Tài liệu</a><a href="/">← Chat</a></div>
     </header>
 
     <main>
@@ -75,6 +75,14 @@
         <label>Model</label>
         <input id="model" type="text" placeholder="gpt-4o-mini" />
         <div class="note">Gợi ý: <code>gpt-4o-mini</code> (rẻ, nhanh) hoặc <code>gpt-4o</code> (mạnh hơn).</div>
+      </div>
+
+      <div class="card">
+        <h2>Google Maps (cho trang 🗺️ Bản đồ)</h2>
+        <p class="sub">Key để hiển thị bản đồ + tìm địa điểm. Lấy ở console.cloud.google.com → bật <b>Maps JavaScript API</b> + <b>Places API</b> → Credentials → API key.</p>
+        <label>Google Maps API key</label>
+        <input id="mapsKey" type="password" placeholder="AIza... (để trống nếu không đổi)" />
+        <div class="note">⚠️ Nhớ vào Google Cloud Console giới hạn key theo domain (Application restrictions → HTTP referrers) để không ai xài chùa key của bạn.</div>
       </div>
 
       <div class="card">
@@ -109,6 +117,8 @@
             `<div>OpenAI key ${b(s.hasOpenAI)}</div>` +
             `<div>Model: <b>${s.model || "-"}</b></div>` +
             `<div>Telegram token ${b(s.hasTelegramToken)}</div>` +
+            `<div>Google Maps key ${b(s.hasMapsKey)}</div>` +
+            `<div>Địa điểm bản đồ: <b>${s.placeCount ?? 0}</b></div>` +
             `<div>Mật khẩu admin ${b(s.hasAdmin)}</div>`;
           if (!hasAdmin) {
             $("adminSub").textContent = "Lần đầu: hãy ĐẶT mật khẩu admin (≥6 ký tự) để khóa trang này.";
@@ -129,6 +139,7 @@
           model: $("model").value,
           telegramBotToken: $("tgToken").value,
           telegramSecret: $("tgSecret").value,
+          googleMapsKey: $("mapsKey").value,
         };
         if (hasAdmin) { body.adminPassword = adminPass; body.newAdminPassword = $("newAdminPass").value || undefined; }
         else { body.newAdminPassword = adminPass; }
@@ -137,7 +148,7 @@
         try {
           const res = await fetch("/api/settings/save", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
           const data = await res.json();
-          if (data.ok) { msg("✓ Đã lưu cài đặt.", true); ["openaiKey","tgToken","tgSecret","newAdminPass"].forEach(i=>$(i)&&($(i).value="")); loadStatus(); }
+          if (data.ok) { msg("✓ Đã lưu cài đặt.", true); ["openaiKey","tgToken","tgSecret","newAdminPass","mapsKey"].forEach(i=>$(i)&&($(i).value="")); loadStatus(); }
           else msg(data.error || "Lưu thất bại.", false);
         } catch { msg("Lỗi kết nối.", false); }
         $("saveBtn").disabled = false;

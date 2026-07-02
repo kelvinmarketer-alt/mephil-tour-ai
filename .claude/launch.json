@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8791", "--directory", "public"],
       "port": 8791
+    },
+    {
+      "name": "mephil-dev",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["wrangler", "pages", "dev", "public", "--port", "8788"],
+      "port": 8788
     }
   ]
 }

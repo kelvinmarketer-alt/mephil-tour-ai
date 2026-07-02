@@ -32,7 +32,7 @@ export async function getConfig(env) {
 
 // So khớp mật khẩu admin (hằng thời gian đơn giản).
 export async function isAdmin(env, password) {
-  if (!password) return false;
+  if (typeof password !== "string" || !password) return false;
   const { adminHash } = await getConfig(env);
   if (!adminHash) return false;
   return (await sha256(password)) === adminHash;
@@ -53,4 +53,27 @@ export async function getDocuments(env) {
 
 export async function saveDocuments(env, docs) {
   await env.SETTINGS.put("documents", JSON.stringify(docs));
+}
+
+// ---- Kho địa điểm bản đồ (lưu trong KV, quản lý qua trang 🗺️ Bản đồ) ----
+export async function getPlaces(env) {
+  if (!env.SETTINGS) return [];
+  const raw = await env.SETTINGS.get("places");
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function savePlaces(env, places) {
+  await env.SETTINGS.put("places", JSON.stringify(places));
+}
+
+// Key hiển thị bản đồ (dùng ở phía trình duyệt — nhớ giới hạn theo domain).
+export async function getGoogleMapsKey(env) {
+  if (!env.SETTINGS) return null;
+  return await env.SETTINGS.get("google_maps_api_key");
 }

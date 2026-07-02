@@ -100,6 +100,7 @@
         <p>Hỏi gì về tour cũng có đáp — theo đúng tài liệu</p>
       </div>
       <div class="nav">
+        <a class="gear" href="/map" title="Bản đồ địa điểm">🗺️</a>
         <a class="gear" href="/documents" title="Tài liệu tour">📚</a>
         <a class="gear" href="/settings" title="Cài đặt">⚙️</a>
       </div>
@@ -120,6 +121,20 @@
       const sendBtn = document.getElementById("send");
       let history = [];
       let busy = false;
+      const HKEY = "mp_chat_v1";
+      const HEXPIRY = 3 * 60 * 60 * 1000; // giữ tối đa 3 giờ
+
+      function saveHistory() {
+        try { sessionStorage.setItem(HKEY, JSON.stringify({ ts: Date.now(), history })); } catch (e) {}
+      }
+      function isReload() {
+        try {
+          const e = performance.getEntriesByType("navigation")[0];
+          if (e && e.type) return e.type === "reload";
+        } catch (e) {}
+        try { return performance.navigation && performance.navigation.type === 1; } catch (e) {}
+        return false;
+      }
 
       const STARTERS = [
         "Người Việt đi Philippines có cần visa không?",
@@ -190,6 +205,7 @@
         if (chips) chips.remove();
         add("user", question);
         history.push({ role: "user", content: question });
+        saveHistory();
         input.value = ""; input.style.height = "auto";
 
         const bubble = add("bot", "");
@@ -205,6 +221,7 @@
           const answer = data.answer || data.error || "Có lỗi xảy ra.";
           bubble.innerHTML = render(answer);
           history.push({ role: "assistant", content: answer });
+          saveHistory();
         } catch (e) {
           bubble.textContent = "Lỗi kết nối, thử lại nhé.";
         } finally {
@@ -222,7 +239,22 @@
         input.style.height = Math.min(input.scrollHeight, 120) + "px";
       });
 
-      welcome();
+      // Khôi phục hội thoại nếu là chuyển-trang-rồi-quay-lại; xóa nếu reload / tắt trình duyệt / quá 3 giờ.
+      (function init() {
+        let saved = null;
+        try { saved = JSON.parse(sessionStorage.getItem(HKEY) || "null"); } catch (e) {}
+        const valid = saved && Array.isArray(saved.history) && saved.history.length &&
+          (Date.now() - saved.ts < HEXPIRY);
+        if (isReload() || !valid) {
+          try { sessionStorage.removeItem(HKEY); } catch (e) {}
+          history = [];
+          welcome();
+        } else {
+          history = saved.history;
+          for (const m of history) add(m.role === "user" ? "user" : "bot", m.content);
+          chat.scrollTop = chat.scrollHeight;
+        }
+      })();
     </script>
   </body>
 </html>

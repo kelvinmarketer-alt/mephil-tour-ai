@@ -1,12 +1,14 @@
 // Cloudflare Worker: web tĩnh (public/) + hỏi-đáp (OpenAI) + Telegram + Cài đặt + Tài liệu — tất cả trong app.
 import { askAI } from "./openai.js";
 import { KNOWLEDGE } from "./knowledge.js";
-import { getConfig, isAdmin, sha256, getDocuments, saveDocuments } from "./config.js";
+import { getConfig, isAdmin, sha256, getDocuments, saveDocuments, getPlaces, savePlaces, getGoogleMapsKey } from "./config.js";
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const p = url.pathname;
+    // Không phục vụ mã worker đã bundle như file tĩnh (tránh lộ logic + tên KV key).
+    if (p === "/_worker.js") return new Response("Not found", { status: 404 });
     try {
       if (request.method === "POST" && p === "/api/ask") return await handleAsk(request, env);
       if (request.method === "POST" && p === "/api/telegram") return await handleTelegram(request, env, ctx);
@@ -17,6 +19,12 @@ export default {
       if (request.method === "POST" && p === "/api/docs/list") return await handleDocsList(request, env);
       if (request.method === "POST" && p === "/api/docs/save") return await handleDocsSave(request, env);
       if (request.method === "POST" && p === "/api/docs/delete") return await handleDocsDelete(request, env);
+      if (request.method === "POST" && p === "/api/places/list") return await handlePlacesList(request, env);
+      if (request.method === "POST" && p === "/api/places/save") return await handlePlacesSave(request, env);
+      if (request.method === "POST" && p === "/api/places/delete") return await handlePlacesDelete(request, env);
+      if (request.method === "POST" && p === "/api/places/mapkey") return await handlePlacesMapKey(request, env);
+      if (request.method === "POST" && p === "/api/places/upload") return await handlePlacesUpload(request, env);
+      if (request.method === "GET" && p.startsWith("/img/")) return await handleImg(p.slice(5), env);
     } catch (e) {
       return json({ error: "Lỗi: " + e.message }, 500);
     }
@@ -118,6 +126,8 @@ async function tgSend(token, chatId, text) {
 async function handleStatus(env) {
   const cfg = await getConfig(env);
   const docs = await getDocuments(env);
+  const places = await getPlaces(env);
+  const mapsKey = await getGoogleMapsKey(env);
   return json({
     hasAdmin: !!cfg.adminHash,
     hasOpenAI: !!cfg.openaiKey,
@@ -125,6 +135,8 @@ async function handleStatus(env) {
     hasTelegramToken: !!cfg.tgToken,
     hasTelegramSecret: !!cfg.tgSecret,
     docCount: docs.length,
+    hasMapsKey: !!mapsKey,
+    placeCount: places.length,
   });
 }
 
@@ -152,6 +164,7 @@ async function handleSave(request, env) {
   await put("model", b.model);
   await put("telegram_bot_token", b.telegramBotToken);
   await put("telegram_secret", b.telegramSecret);
+  await put("google_maps_api_key", b.googleMapsKey);
 
   return json({ ok: true });
 }
@@ -208,4 +221,87 @@ async function handleDocsDelete(request, env) {
   const docs = (await getDocuments(env)).filter((d) => d.id !== b.id);
   await saveDocuments(env, docs);
   return json({ ok: true });
+}
+
+// ---------- Địa điểm bản đồ (trong app) ----------
+const PLACE_CATS = ["an", "cafe", "choi", "checkin"];
+
+async function handlePlacesList(request, env) {
+  // CÔNG KHAI (chế độ test): ai cũng xem được danh sách địa điểm.
+  return json({ places: await getPlaces(env) });
+}
+
+async function handlePlacesSave(request, env) {
+  const b = await request.json().catch(() => ({}));
+  // CÔNG KHAI (chế độ test): ai cũng thêm/sửa được địa điểm.
+  const name = (b.name || "").toString().trim();
+  const lat = Number(b.lat);
+  const lng = Number(b.lng);
+  if (!name) return json({ error: "Thiếu tên địa điểm." }, 400);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return json({ error: "Thiếu toạ độ địa điểm (chọn trên bản đồ)." }, 400);
+
+  const fields = {
+    name,
+    lat,
+    lng,
+    category: PLACE_CATS.includes(b.category) ? b.category : "an",
+    description: (b.description || "").toString(),
+    photos: Array.isArray(b.photos) ? b.photos.filter((x) => typeof x === "string" && x).slice(0, 15) : (b.photoUrl ? [(b.photoUrl || "").toString()] : []),
+    address: (b.address || "").toString().trim(),
+    rating: b.rating === "" || b.rating == null ? null : Number(b.rating),
+  };
+
+  const places = await getPlaces(env);
+  if (b.id) {
+    const i = places.findIndex((x) => x.id === b.id);
+    if (i >= 0) places[i] = { ...places[i], ...fields, updatedAt: Date.now() };
+    else places.push({ id: b.id, ...fields, createdAt: Date.now(), updatedAt: Date.now() });
+  } else {
+    places.push({ id: crypto.randomUUID(), ...fields, createdAt: Date.now(), updatedAt: Date.now() });
+  }
+  await savePlaces(env, places);
+  return json({ ok: true });
+}
+
+async function handlePlacesDelete(request, env) {
+  const b = await request.json().catch(() => ({}));
+  // CÔNG KHAI (chế độ test): ai cũng xóa được địa điểm.
+  const places = (await getPlaces(env)).filter((x) => x.id !== b.id);
+  await savePlaces(env, places);
+  return json({ ok: true });
+}
+
+// Tải 1 ảnh lên (đã nén phía client) → lưu KV key "photo:<id>", trả URL /img/<id>.
+async function handlePlacesUpload(request, env) {
+  if (!env.SETTINGS) return json({ error: "Chưa gắn kho ảnh (KV)." }, 500);
+  const ct = (request.headers.get("content-type") || "").toLowerCase();
+  if (!ct.startsWith("image/")) return json({ error: "Chỉ nhận tệp ảnh." }, 400);
+  const buf = await request.arrayBuffer();
+  if (!buf.byteLength) return json({ error: "Ảnh rỗng." }, 400);
+  if (buf.byteLength > 6 * 1024 * 1024) return json({ error: "Ảnh quá lớn (>6MB)." }, 413);
+  const id = crypto.randomUUID();
+  await env.SETTINGS.put("photo:" + id, buf, { metadata: { ct } });
+  return json({ url: "/img/" + id });
+}
+
+// Phục vụ ảnh từ KV (công khai, cache lâu).
+async function handleImg(id, env) {
+  if (!env.SETTINGS || !id) return new Response("not found", { status: 404 });
+  const { value, metadata } = await env.SETTINGS.getWithMetadata("photo:" + id, { type: "arrayBuffer" });
+  if (!value) return new Response("not found", { status: 404 });
+  return new Response(value, {
+    headers: {
+      "content-type": (metadata && metadata.ct) || "image/jpeg",
+      "cache-control": "public, max-age=31536000, immutable",
+    },
+  });
+}
+
+// Trả Google Maps API key cho trang bản đồ — chỉ khi đã đăng nhập admin.
+async function handlePlacesMapKey(request, env) {
+  // CÔNG KHAI (chế độ test): trả key cho trang bản đồ, không cần đăng nhập.
+  // (Key vẫn được bảo vệ bằng HTTP-referrer restriction phía Google.)
+  const key = await getGoogleMapsKey(env);
+  if (!key) return json({ error: "Chưa cấu hình Google Maps API key. Mở trang Cài đặt (⚙️) để nhập nhé." }, 503);
+  return json({ mapKey: key });
 }
