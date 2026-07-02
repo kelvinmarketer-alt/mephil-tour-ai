@@ -144,13 +144,21 @@ async function getGoogleMapsKey(env) {
   if (!env.SETTINGS) return null;
   return await env.SETTINGS.get("google_maps_api_key");
 }
+function normalizeSupabaseUrl(url) {
+  if (!url) return null;
+  url = url.trim().replace(/\/+$/, "");
+  const dash = url.match(/supabase\.com\/dashboard\/project\/([a-z0-9]+)/i);
+  if (dash) return "https://" + dash[1] + ".supabase.co";
+  if (/^[a-z0-9]{20}$/i.test(url)) return "https://" + url + ".supabase.co";
+  return url;
+}
 async function getSupabase(env) {
   if (!env.SETTINGS) return { url: null, key: null };
   const [url, key] = await Promise.all([
     env.SETTINGS.get("supabase_url"),
     env.SETTINGS.get("supabase_service_key")
   ]);
-  return { url: url ? url.replace(/\/$/, "") : null, key: key || null };
+  return { url: normalizeSupabaseUrl(url), key: key || null };
 }
 
 // src/index.js
@@ -402,15 +410,17 @@ async function handlePlacesUpload(request, env) {
   if (!buf.byteLength) return json({ error: "\u1EA2nh r\u1ED7ng." }, 400);
   if (buf.byteLength > 6 * 1024 * 1024) return json({ error: "\u1EA2nh qu\xE1 l\u1EDBn (>6MB)." }, 413);
   const sb = await getSupabase(env);
+  let sbError = null;
   if (sb.url && sb.key) {
     try {
       return json({ url: await uploadToSupabase(sb, buf, ct) });
     } catch (e) {
+      sbError = String(e && e.message || e).slice(0, 300);
     }
   }
   const id = crypto.randomUUID();
   await env.SETTINGS.put("photo:" + id, buf, { metadata: { ct } });
-  return json({ url: "/img/" + id });
+  return json({ url: "/img/" + id, sbError });
 }
 async function uploadToSupabase(sb, buf, ct) {
   const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";

@@ -288,16 +288,17 @@ async function handlePlacesUpload(request, env) {
   if (buf.byteLength > 6 * 1024 * 1024) return json({ error: "Ảnh quá lớn (>6MB)." }, 413);
 
   const sb = await getSupabase(env);
+  let sbError = null;
   if (sb.url && sb.key) {
     try {
       return json({ url: await uploadToSupabase(sb, buf, ct) });
     } catch (e) {
-      // Supabase lỗi → vẫn fallback KV để không mất ảnh (báo mềm ở log).
+      sbError = String((e && e.message) || e).slice(0, 300); // surface để chẩn đoán
     }
   }
   const id = crypto.randomUUID();
   await env.SETTINGS.put("photo:" + id, buf, { metadata: { ct } });
-  return json({ url: "/img/" + id });
+  return json({ url: "/img/" + id, sbError });
 }
 
 async function uploadToSupabase(sb, buf, ct) {

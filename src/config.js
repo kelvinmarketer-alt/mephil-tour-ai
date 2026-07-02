@@ -78,6 +78,17 @@ export async function getGoogleMapsKey(env) {
   return await env.SETTINGS.get("google_maps_api_key");
 }
 
+// Chuẩn hóa URL Supabase: chấp nhận cả link dashboard (supabase.com/dashboard/project/<ref>)
+// lẫn URL API (<ref>.supabase.co) → luôn trả về URL API đúng.
+function normalizeSupabaseUrl(url) {
+  if (!url) return null;
+  url = url.trim().replace(/\/+$/, "");
+  const dash = url.match(/supabase\.com\/dashboard\/project\/([a-z0-9]+)/i);
+  if (dash) return "https://" + dash[1] + ".supabase.co";       // link dashboard → URL API
+  if (/^[a-z0-9]{20}$/i.test(url)) return "https://" + url + ".supabase.co"; // chỉ nhập ref trần
+  return url;                                                    // đã là URL API đúng
+}
+
 // Cấu hình Supabase Storage (lưu ảnh upload): URL project + service_role key. Cấu hình qua ⚙️.
 export async function getSupabase(env) {
   if (!env.SETTINGS) return { url: null, key: null };
@@ -85,5 +96,5 @@ export async function getSupabase(env) {
     env.SETTINGS.get("supabase_url"),
     env.SETTINGS.get("supabase_service_key"),
   ]);
-  return { url: url ? url.replace(/\/$/, "") : null, key: key || null };
+  return { url: normalizeSupabaseUrl(url), key: key || null };
 }
