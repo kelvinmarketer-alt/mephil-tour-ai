@@ -7,6 +7,12 @@ compatibility_date = "2026-01-01"
 binding = "SETTINGS"
 id = "96ceb0a96321491b80dc2ad93ede62fa"
 
+# Database quan hệ (users, sessions, reviews, tours) — thay Supabase (D1 free, cùng stack CF).
+[[d1_databases]]
+binding = "DB"
+database_name = "mephil-map"
+database_id = "387a7507-82ee-4edd-b126-1fe62939f117"
+
 [vars]
 MODEL = "gpt-4o-mini"
 # Gọi OpenAI qua AI Gateway "mephil" (né chặn VN, giữ key OpenAI của user).

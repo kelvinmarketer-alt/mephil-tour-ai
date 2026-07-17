@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quản lý User · Bản đồ Mê Philippines</title>
+    <link rel="icon" href="/favicon-32.png" type="image/png" />
+    <meta name="theme-color" content="#0a5ca3" />
+    <style>
+      :root { --navy: #0a5ca3; --navy-2: #0b6ec4; --line: #e2eaf3; --ink: #14283f; --muted: #6b7d92; --ok: #1a8a4a; --bad: #c0392b; }
+      * { box-sizing: border-box; }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: var(--ink); background: #eef3fb; margin: 0; }
+      header { background: linear-gradient(135deg, var(--navy), var(--navy-2)); color: #fff; padding: 16px 20px; display: flex; align-items: center; gap: 12px; }
+      header .logo { width: 34px; height: 34px; border-radius: 9px; background: #fff; object-fit: contain; padding: 2px; }
+      header h1 { font-size: 16px; margin: 0; }
+      header .nav { margin-left: auto; display: flex; gap: 8px; }
+      header .nav a { color: #fff; text-decoration: none; font-size: 14px; background: rgba(255,255,255,.15); padding: 7px 12px; border-radius: 8px; }
+      main { max-width: 920px; margin: 22px auto; padding: 0 16px 50px; }
+      .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+      .card h2 { font-size: 15px; margin: 0 0 4px; }
+      .sub { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
+      label { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 5px; }
+      input, select { width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; font: inherit; font-size: 14px; outline: none; background: #fff; }
+      input:focus, select:focus { border-color: var(--navy-2); }
+      button { background: var(--navy); color: #fff; border: 0; border-radius: 9px; padding: 10px 15px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+      button.ghost { background: #fff; color: var(--navy); border: 1px solid #c9d8ea; }
+      button.danger { background: #fff; color: var(--bad); border: 1px solid #f3c4be; }
+      button.sm { padding: 6px 10px; font-size: 12px; }
+      button:disabled { opacity: .5; cursor: default; }
+      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      #msg { font-size: 14px; padding: 10px 12px; border-radius: 9px; margin-bottom: 14px; display: none; }
+      #msg.ok { display: block; background: #e6f6ec; color: var(--ok); }
+      #msg.err { display: block; background: #fdecea; color: var(--bad); }
+      table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+      th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+      th { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; }
+      .tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+      .tag.admin { background: #fff3d6; color: #8a5a00; }
+      .tag.user { background: #e6f0fb; color: var(--navy); }
+      .exp-ok { color: var(--ok); font-weight: 600; }
+      .exp-bad { color: var(--bad); font-weight: 600; }
+      .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+      .table-wrap { overflow-x: auto; }
+      #editor { display: none; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img class="logo" src="/icon-192.png" alt="Mê Philippines" />
+      <h1>Quản lý User — Bản đồ</h1>
+      <div class="nav"><a href="/map">🗺️ Bản đồ</a><a href="/tours-admin">🧭 Tour</a><a href="/">← Chat</a></div>
+    </header>
+
+    <main>
+      <div id="msg"></div>
+
+      <!-- Cổng: đăng nhập admin / tạo admin đầu tiên -->
+      <div id="gate">
+        <div class="card">
+          <h2>Đăng nhập admin</h2>
+          <p class="sub">Trang này chỉ dành cho quản trị viên.</p>
+          <label>Email</label><input id="gEmail" type="email" placeholder="admin@..." />
+          <label>Mật khẩu</label><input id="gPass" type="password" placeholder="Mật khẩu" />
+          <div class="row" style="margin-top:12px"><button id="gLogin" type="button">Đăng nhập</button></div>
+        </div>
+        <div class="card">
+          <h2>Lần đầu: tạo admin gốc</h2>
+          <p class="sub">Chỉ dùng 1 lần khi chưa có admin nào. Cần mật khẩu hệ thống (mật khẩu admin cũ trong Cài đặt).</p>
+          <label>Mật khẩu hệ thống</label><input id="bSys" type="password" placeholder="Mật khẩu admin hệ thống" />
+          <div class="grid">
+            <div><label>Email admin</label><input id="bEmail" type="email" placeholder="admin@..." /></div>
+            <div><label>Mật khẩu admin mới</label><input id="bPass" type="password" placeholder="≥6 ký tự" /></div>
+          </div>
+          <div class="row" style="margin-top:12px"><button id="bCreate" class="ghost" type="button">Tạo admin gốc</button></div>
+        </div>
+      </div>
+
+      <!-- Bảng user (admin) -->
+      <div id="panel" style="display:none">
+        <div class="card">
+          <div class="row" style="justify-content:space-between">
+            <div><h2 style="margin:0">Danh sách user</h2><p class="sub" style="margin:2px 0 0" id="count"></p></div>
+            <button id="newBtn" type="button">➕ Thêm user</button>
+          </div>
+          <div class="table-wrap" style="margin-top:12px">
+            <table>
+              <thead><tr><th>Email</th><th>Tên</th><th>Vai trò</th><th>Gói</th><th>Hết hạn</th><th>Thao tác</th></tr></thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" id="editor">
+          <h2 id="editorTitle">Thêm user</h2>
+          <input type="hidden" id="uId" />
+          <div class="grid">
+            <div><label>Email</label><input id="uEmail" type="email" placeholder="email@..." /></div>
+            <div><label>Tên</label><input id="uName" type="text" placeholder="Tên hiển thị" /></div>
+          </div>
+          <div class="grid">
+            <div><label>Vai trò</label><select id="uRole"><option value="user">User</option><option value="admin">Admin</option></select></div>
+            <div><label>Gói</label><select id="uPlan"><option value="trial">Dùng thử</option><option value="month">Gói tháng</option><option value="year">Gói năm</option><option value="none">Không (admin)</option></select></div>
+          </div>
+          <div class="grid">
+            <div><label>Ngày hết hạn</label><input id="uExpire" type="date" /></div>
+            <div><label>Mật khẩu <span style="font-weight:400;color:var(--muted)">(để trống nếu không đổi)</span></label><input id="uPass" type="password" placeholder="≥6 ký tự" /></div>
+          </div>
+          <div class="row" style="margin-top:14px"><button id="saveBtn" type="button">💾 Lưu</button><button class="ghost" id="cancelBtn" type="button">Hủy</button></div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const msg = (t, ok) => { const m = $("msg"); m.textContent = t; m.className = ok ? "ok" : "err"; window.scrollTo(0, 0); };
+      const esc = (s) => (s || "").toString().replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      const TOKEN_KEY = "mephil_token";
+      const getToken = () => localStorage.getItem(TOKEN_KEY) || "";
+      const setToken = (t) => (t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY));
+      let users = [];
+
+      async function api(path, body) {
+        const headers = { "content-type": "application/json" };
+        const t = getToken(); if (t) headers.authorization = "Bearer " + t;
+        return (await fetch(path, { method: "POST", headers, body: JSON.stringify(body || {}) })).json();
+      }
+      async function me() {
+        const t = getToken(); if (!t) return null;
+        const d = await (await fetch("/api/auth/me", { headers: { authorization: "Bearer " + t } })).json();
+        return d.user || null;
+      }
+
+      function expText(u) {
+        if (u.role === "admin") return "—";
+        if (!u.expires_at) return "—";
+        const d = Math.ceil((u.expires_at - Date.now()) / 86400000);
+        return d > 0 ? '<span class="exp-ok">còn ' + d + ' ngày</span>' : '<span class="exp-bad">đã hết hạn</span>';
+      }
+      const ymd = (ms) => { if (!ms) return ""; const d = new Date(ms); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+
+      async function loadUsers() {
+        const d = await api("/api/admin/users/list", {});
+        if (d.error) { msg(d.error, false); return false; }
+        users = d.users || [];
+        $("count").textContent = users.length + " user";
+        $("rows").innerHTML = users.map((u) =>
+          '<tr><td>' + esc(u.email) + '</td><td>' + esc(u.name || "") + '</td>' +
+          '<td><span class="tag ' + u.role + '">' + (u.role === "admin" ? "Admin" : "User") + '</span></td>' +
+          '<td>' + esc({ trial: "Dùng thử", month: "Tháng", year: "Năm", none: "—" }[u.plan] || u.plan || "") + '</td>' +
+          '<td>' + expText(u) + '</td>' +
+          '<td><div class="acts">' +
+          '<button class="ghost sm" data-edit="' + u.id + '">Sửa</button>' +
+          '<button class="ghost sm" data-ext="' + u.id + '" data-days="30">+30d</button>' +
+          '<button class="ghost sm" data-ext="' + u.id + '" data-days="365">+1 năm</button>' +
+          '<button class="danger sm" data-del="' + u.id + '">Xóa</button>' +
+          '</div></td></tr>'
+        ).join("");
+        return true;
+      }
+
+      async function enter(user) {
+        if (user && user.role === "admin") { $("gate").style.display = "none"; $("panel").style.display = "block"; await loadUsers(); }
+        else { $("gate").style.display = "block"; $("panel").style.display = "none"; }
+      }
+
+      $("gLogin").onclick = async () => {
+        const d = await api("/api/auth/login", { email: $("gEmail").value.trim(), password: $("gPass").value });
+        if (d.error) return msg(d.error, false);
+        if (d.user.role !== "admin") { msg("Tài khoản này không phải admin.", false); return; }
+        setToken(d.token); enter(d.user);
+      };
+      $("bCreate").onclick = async () => {
+        const d = await api("/api/auth/bootstrap-admin", { adminPassword: $("bSys").value, email: $("bEmail").value.trim(), password: $("bPass").value });
+        if (d.error) return msg(d.error, false);
+        setToken(d.token); msg("✓ Đã tạo admin gốc.", true); enter(d.user);
+      };
+
+      function openEditor(u) {
+        $("editor").style.display = "block";
+        $("editorTitle").textContent = u ? "Sửa user" : "Thêm user";
+        $("uId").value = u ? u.id : "";
+        $("uEmail").value = u ? u.email : ""; $("uEmail").disabled = !!u;
+        $("uName").value = u ? (u.name || "") : "";
+        $("uRole").value = u ? u.role : "user";
+        $("uPlan").value = u ? u.plan : "trial";
+        $("uExpire").value = u && u.expires_at ? ymd(u.expires_at) : "";
+        $("uPass").value = "";
+        $("editor").scrollIntoView({ behavior: "smooth" });
+      }
+      $("newBtn").onclick = () => openEditor(null);
+      $("cancelBtn").onclick = () => { $("editor").style.display = "none"; };
+
+      $("saveBtn").onclick = async () => {
+        const id = $("uId").value;
+        const exp = $("uExpire").value ? new Date($("uExpire").value + "T23:59:59").getTime() : null;
+        const body = { id: id || undefined, name: $("uName").value.trim(), role: $("uRole").value, plan: $("uPlan").value, expires_at: exp };
+        if (!id) body.email = $("uEmail").value.trim();
+        if ($("uPass").value) body.password = $("uPass").value;
+        const d = await api("/api/admin/users/save", body);
+        if (d.error) return msg(d.error, false);
+        msg("✓ Đã lưu.", true); $("editor").style.display = "none"; loadUsers();
+      };
+
+      $("rows").addEventListener("click", async (e) => {
+        const ed = e.target.getAttribute("data-edit"), del = e.target.getAttribute("data-del"), ext = e.target.getAttribute("data-ext");
+        if (ed) return openEditor(users.find((u) => u.id === ed));
+        if (del) {
+          if (!confirm("Xóa user này?")) return;
+          const d = await api("/api/admin/users/delete", { id: del });
+          if (d.ok) { msg("✓ Đã xóa.", true); loadUsers(); } else msg(d.error || "Xóa thất bại.", false);
+          return;
+        }
+        if (ext) {
+          const u = users.find((x) => x.id === ext); const days = +e.target.getAttribute("data-days");
+          const base = Math.max(Date.now(), u.expires_at || 0);
+          const plan = days >= 365 ? "year" : "month";
+          const d = await api("/api/admin/users/save", { id: ext, expires_at: base + days * 86400000, plan });
+          if (d.ok) { msg("✓ Đã gia hạn " + days + " ngày.", true); loadUsers(); } else msg(d.error || "Lỗi.", false);
+        }
+      });
+
+      (async () => { enter(await me()); })();
+    </script>
+  </body>
+</html>

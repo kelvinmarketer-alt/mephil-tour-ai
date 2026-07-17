@@ -43,6 +43,7 @@
       button.act { display: block; width: 100%; text-align: left; background: #eef3fa; color: var(--ink); border: 1px solid #d5e0ee; border-radius: 11px; padding: 12px 14px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 8px; }
       button.act.primary { background: var(--navy); color: #fff; border-color: var(--navy); }
       button.act.on { background: var(--gold); color: #4a3600; border-color: #d29b00; }
+      button.act.adminbtn { background: #fff7e6; color: #8a5a00; border-color: #ffe0a3; }
       button.primary { background: var(--navy); color: #fff; border: 0; border-radius: 10px; padding: 11px 16px; font-weight: 700; font-size: 14px; cursor: pointer; }
       button.ghost { background: #fff; color: var(--navy); border: 1px solid #c9d8ea; border-radius: 10px; padding: 11px 16px; font: inherit; font-weight: 600; cursor: pointer; }
       .frow { display: flex; gap: 10px; margin-top: 14px; }
@@ -87,6 +88,40 @@
       .iw .imeta { font-size: 12px; color: var(--muted); margin: 3px 0 8px; }
       .iw .idesc { font-size: 13.5px; color: #33475e; line-height: 1.55; margin-bottom: 11px; white-space: pre-wrap; }
       .iw a.dir { display: inline-flex; align-items: center; gap: 6px; background: var(--navy); color: #fff; text-decoration: none; font-size: 13px; font-weight: 700; padding: 9px 13px; border-radius: 9px; }
+      .iw .lockmsg { font-size: 13px; color: #8a5a00; background: #fff7e6; border: 1px solid #ffe0a3; border-radius: 9px; padding: 9px 11px; margin: 4px 0 10px; line-height: 1.5; }
+
+      /* Tài khoản + đăng nhập */
+      #account { margin-bottom: 10px; }
+      .acctcard { display: flex; align-items: center; gap: 10px; background: #eef3fa; border: 1px solid #d5e0ee; border-radius: 11px; padding: 10px 12px; }
+      .acctcard b { font-size: 14px; }
+      .acctcard .pm { font-size: 12px; color: var(--muted); margin-top: 2px; }
+      .acctcard button { margin-left: auto; padding: 7px 11px; font-size: 12px; }
+      .authtabs { display: flex; gap: 6px; margin-bottom: 12px; }
+      .authtab { flex: 1; padding: 9px; border: 1px solid var(--line); background: #fff; border-radius: 9px; font: inherit; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; }
+      .authtab.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+      /* Tour */
+      .tourrow { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 11px; padding: 11px 13px; margin-bottom: 8px; cursor: pointer; }
+      .tourrow:hover { border-color: var(--navy-2); }
+      .tourrow .go { margin-left: auto; color: var(--muted); font-size: 20px; }
+      .lockpill { margin-left: auto; font-size: 12px; font-weight: 700; background: #fff7e6; color: #8a5a00; border: 1px solid #ffe0a3; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+      .tday { border-left: 3px solid var(--navy-2); padding: 4px 0 4px 12px; margin: 12px 0; }
+      .tdh { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+      .tnote { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; line-height: 1.5; }
+      .tstop { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; cursor: pointer; border-top: 1px solid #eef2f7; }
+      .tstop:hover .pn { color: var(--navy); }
+      .tnum { width: 22px; height: 22px; border-radius: 50%; background: var(--navy); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; flex: none; margin-top: 1px; }
+
+      /* Đánh giá */
+      .rvstars { display: flex; gap: 4px; font-size: 30px; margin-bottom: 8px; }
+      .rvstar { color: #d5deea; cursor: pointer; line-height: 1; }
+      .rvstar.on { color: var(--gold); }
+      .rvitem { border-top: 1px solid var(--line); padding: 11px 0; }
+      .rvhead { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+      .rvst { color: var(--gold); letter-spacing: 1px; }
+      .vbadge { font-size: 11px; font-weight: 700; background: #e6f6ec; color: var(--ok); padding: 1px 7px; border-radius: 20px; }
+      .rvhead .del { padding: 3px 9px; font-size: 12px; border-radius: 7px; border: 1px solid #f3c4be; background: #fff; }
+      .rvtext { font-size: 13.5px; color: #33475e; line-height: 1.55; margin: 5px 0 7px; white-space: pre-wrap; }
     </style>
   </head>
   <body>
@@ -97,14 +132,19 @@
 
     <div id="panel" class="sheet hidden">
       <div class="ph"><div class="pt">🗺️ Bản đồ địa điểm</div><button class="x" id="panelClose" aria-label="Đóng">✕</button></div>
-      <button class="act primary" id="addBtn" type="button">➕ Thêm địa điểm</button>
+      <div id="account"></div>
+      <button class="act primary" id="addBtn" type="button" style="display:none">➕ Thêm địa điểm</button>
+      <button class="act" id="pendingBtn" type="button" style="display:none">📥 Duyệt đề xuất</button>
+      <button class="act adminbtn" id="adminUsers" type="button" style="display:none" onclick="location.href='/users'">👥 Trang quản lý User</button>
+      <button class="act adminbtn" id="adminTours" type="button" style="display:none" onclick="location.href='/tours-admin'">🧭 Trang quản lý Tour</button>
       <button class="act" id="nearBtn" type="button">📍 Về vị trí của tôi</button>
+      <button class="act" id="tourBtn" type="button">🧭 Tour &amp; lịch trình</button>
       <button class="act" id="goodBtn" type="button">⭐ Điểm tốt gần tôi (★≥4, ≤5km)</button>
       <div class="sec">Lọc danh mục</div>
       <div class="chips" id="legend"></div>
-      <div class="sec">Địa điểm đã lưu <span id="counter"></span></div>
+      <div class="sec" id="listSec" style="display:none"><span id="listLabel">Quản lý địa điểm</span> <span id="counter"></span></div>
       <div id="list" class="list"></div>
-      <div class="navrow"><a href="/">💬 Chat</a><a href="/documents">📚 Tài liệu</a><a href="/settings">⚙️ Cài đặt</a></div>
+      <div class="navrow"><a href="/">💬 Chat</a><a href="/settings">⚙️ Cài đặt</a></div>
     </div>
 
     <div id="formPanel" class="sheet hidden">
@@ -126,6 +166,10 @@
       </div>
       <label for="pRating">Đánh giá (0–5)</label>
       <input id="pRating" type="number" min="0" max="5" step="0.1" placeholder="vd: 4.5" />
+      <div id="visBox" style="display:none">
+        <label for="pVis">Chế độ điểm này</label>
+        <select id="pVis"><option value="private">🔒 Chỉ mình tôi (riêng tư)</option><option value="suggest">📤 Đề xuất lên bản đồ chung (chờ admin duyệt)</option></select>
+      </div>
       <label>Ảnh trải nghiệm (chọn nhiều ảnh từ máy)</label>
       <input type="file" id="pFiles" accept="image/*" multiple hidden />
       <button type="button" class="ghost" id="pickBtn" style="width:100%">📷 Thêm ảnh từ máy</button>
@@ -134,6 +178,51 @@
       <textarea id="pDesc" placeholder="vd: Đi tầm 11h khỏi hết chỗ, gọi thêm nem cua bể. Gửi xe bên hông."></textarea>
       <div class="hint" id="coordHint">Chưa chọn vị trí.</div>
       <div class="frow"><button class="primary" id="saveBtn" type="button" style="flex:1">💾 Lưu địa điểm</button><button class="ghost" id="cancelBtn" type="button">Hủy</button></div>
+    </div>
+
+    <div id="authPanel" class="sheet hidden">
+      <div class="ph"><div class="pt" id="authTitle">Đăng nhập</div><button class="x" id="authClose" aria-label="Đóng">✕</button></div>
+      <div class="authtabs"><button id="tabLogin" class="authtab on" type="button">Đăng nhập</button><button id="tabSignup" class="authtab" type="button">Đăng ký</button></div>
+      <div id="signupName" style="display:none"><label for="auName">Tên của bạn</label><input id="auName" type="text" placeholder="Tên hiển thị" /></div>
+      <label for="auEmail">Email</label>
+      <input id="auEmail" type="email" placeholder="email@example.com" autocomplete="username" />
+      <label for="auPass">Mật khẩu</label>
+      <input id="auPass" type="password" placeholder="≥ 6 ký tự" autocomplete="current-password" />
+      <div class="hint" id="authHint">Đăng ký được <b>dùng thử 3 ngày</b> đầy đủ tính năng (xem ghi chú, ảnh, đánh giá, tour).</div>
+      <button class="primary" id="authSubmit" type="button" style="width:100%;margin-top:12px">Đăng nhập</button>
+    </div>
+
+    <div id="tourListPanel" class="sheet hidden">
+      <div class="ph"><div class="pt">🧭 Tour &amp; lịch trình</div><button class="x" id="tourListClose" aria-label="Đóng">✕</button></div>
+      <input id="tourSearch" type="text" placeholder="🔍 Tìm tour theo tên..." style="margin-bottom:10px" />
+      <div id="tourListBox" class="list"></div>
+    </div>
+
+    <div id="tourViewPanel" class="sheet hidden">
+      <div class="ph"><div class="pt" id="tourTitle">Tour</div><button class="x" id="tourViewClose" aria-label="Đóng">✕</button></div>
+      <button class="act" id="tourExit" type="button">← Thoát tour, xem lại tất cả điểm</button>
+      <div id="tourDays"></div>
+    </div>
+
+    <div id="pendingPanel" class="sheet hidden">
+      <div class="ph"><div class="pt">📥 Đề xuất chờ duyệt</div><button class="x" id="pendingClose" aria-label="Đóng">✕</button></div>
+      <div id="pendingBox" class="list"></div>
+    </div>
+
+    <div id="reviewPanel" class="sheet hidden">
+      <div class="ph"><div class="pt" id="rvTitle">Đánh giá</div><button class="x" id="rvClose" aria-label="Đóng">✕</button></div>
+      <div id="rvForm">
+        <div class="rvstars" id="rvStars"></div>
+        <textarea id="rvContent" placeholder="Chia sẻ trải nghiệm thật của bạn: món gì ngon, giá cả, không gian, mẹo... (tối thiểu 100 ký tự)"></textarea>
+        <div class="hint" id="rvCount">0 / 100 ký tự</div>
+        <input type="file" id="rvFiles" accept="image/*" multiple hidden />
+        <button class="ghost" id="rvPick" type="button" style="width:100%">📷 Thêm ảnh</button>
+        <div class="thumbs" id="rvThumbs"></div>
+        <div class="hint" id="rvCheckin"></div>
+        <button class="primary" id="rvSubmit" type="button" style="width:100%;margin-top:10px">Gửi đánh giá</button>
+      </div>
+      <div class="sec" style="margin-top:16px">Đánh giá của mọi người</div>
+      <div id="rvList" class="list"></div>
     </div>
 
     <script>
@@ -155,11 +244,23 @@
       let places = [];
       let map, geocoder, infoWindow, userPos = null, userDot = null;
       let draftMarker = null, draftPos = null, draftPhotos = [], formOpen = false, goodOnly = false, OverlayCls = null;
+      let me = null, fullAccess = false, authMode = "login";
       const markers = new Map();
       const activeCats = new Set(Object.keys(CATS));
 
+      const TOKEN_KEY = "mephil_token";
+      const getToken = () => localStorage.getItem(TOKEN_KEY) || "";
+      const setToken = (t) => (t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY));
+
       async function api(path, body) {
-        const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}) });
+        const headers = { "content-type": "application/json" };
+        const t = getToken(); if (t) headers.authorization = "Bearer " + t;
+        const res = await fetch(path, { method: "POST", headers, body: JSON.stringify(body || {}) });
+        return res.json();
+      }
+      async function apiGet(path) {
+        const t = getToken();
+        const res = await fetch(path, { headers: t ? { authorization: "Bearer " + t } : {} });
         return res.json();
       }
 
@@ -178,16 +279,55 @@
 
       async function init() {
         try {
+          me = (await apiGet("/api/auth/me")).user || null;
+          applyRole();
           const k = await api("/api/places/mapkey", {});
           if (k.error) { msg(k.error, false); return; }
           await loadMaps(k.mapKey);
           initMap();
-          const data = await api("/api/places/list", {});
-          places = data.places || [];
           renderLegend();
-          renderAll();
-          locateUser(false);
+          await loadPlaces();
+          locateUser(false, () => { if (!fullAccess) loadPlaces(); });
         } catch (e) { msg(e.message || "Có lỗi khi tải bản đồ.", false); }
+      }
+      async function loadPlaces() {
+        const data = await api("/api/places/list", userPos ? { lat: userPos.lat, lng: userPos.lng } : {});
+        places = data.places || [];
+        fullAccess = !!data.full;
+        renderAll();
+      }
+
+      // ---------- Đăng nhập / phân quyền ----------
+      const activeMe = () => me && (me.role === "admin" || (me.expires_at && me.expires_at > Date.now()));
+      function applyRole() {
+        const admin = me && me.role === "admin";
+        $("addBtn").style.display = activeMe() ? "" : "none";
+        $("pendingBtn").style.display = admin ? "" : "none";
+        $("adminUsers").style.display = admin ? "" : "none";
+        $("adminTours").style.display = admin ? "" : "none";
+        renderAccount();
+      }
+      const planLabel = (p) => ({ trial: "Dùng thử", month: "Gói tháng", year: "Gói năm", none: "" }[p] || p || "");
+      function renderAccount() {
+        const box = $("account");
+        if (!me) { box.innerHTML = '<button class="act primary" id="loginBtn2" type="button">🔑 Đăng nhập / Đăng ký (dùng thử 3 ngày)</button>'; $("loginBtn2").onclick = openAuth; return; }
+        let s;
+        if (me.role === "admin") s = "👑 Admin";
+        else if (me.expires_at) { const d = Math.ceil((me.expires_at - Date.now()) / 86400000); s = d > 0 ? "Còn " + d + " ngày · " + planLabel(me.plan) : "⛔ Đã hết hạn — liên hệ admin gia hạn"; }
+        else s = planLabel(me.plan);
+        box.innerHTML = '<div class="acctcard"><div style="min-width:0"><b>' + esc(me.name || me.email) + '</b><div class="pm">' + esc(s) + '</div></div><button class="ghost" id="logoutBtn" type="button">Đăng xuất</button></div>';
+        $("logoutBtn").onclick = async () => { await api("/api/auth/logout", {}); setToken(""); location.reload(); };
+      }
+      function openAuth() { closePanel(); authMode = "login"; syncAuthTabs(); $("authPanel").classList.remove("hidden"); $("fabIcon").textContent = "✕"; }
+      function closeAuth() { $("authPanel").classList.add("hidden"); $("fabIcon").textContent = "☰"; }
+      window.__openAuth = openAuth;
+      function syncAuthTabs() {
+        $("tabLogin").classList.toggle("on", authMode === "login");
+        $("tabSignup").classList.toggle("on", authMode === "signup");
+        $("authTitle").textContent = authMode === "login" ? "Đăng nhập" : "Đăng ký";
+        $("signupName").style.display = authMode === "signup" ? "" : "none";
+        $("authHint").style.display = authMode === "signup" ? "" : "none";
+        $("authSubmit").textContent = authMode === "login" ? "Đăng nhập" : "Đăng ký (dùng thử 3 ngày)";
       }
 
       function initMap() {
@@ -242,7 +382,7 @@
         return arr;
       }
 
-      function renderAll() { renderMarkers(); renderList(); $("counter").textContent = "(" + places.length + ")"; }
+      function renderAll() { renderMarkers(); renderList(); }
 
       function renderMarkers() {
         markers.forEach((o) => o.setMap(null));
@@ -263,8 +403,23 @@
 
       function openInfo(p) {
         const cat = CATS[p.category] || CATS.an;
+        if (!fullAccess && !p.mine) {
+          const trial = !!me; // đã đăng nhập nhưng chưa trả phí
+          const lock = trial
+            ? '<div class="lockmsg">🔒 Gói dùng thử chưa xem được. <b>Nâng cấp gói trả phí</b> (liên hệ admin) để mở kinh nghiệm, ảnh & đánh giá.</div>'
+            : '<div class="lockmsg">🔒 Đăng ký để xem kinh nghiệm, ảnh & đánh giá của địa điểm này</div>' +
+              '<a class="dir" href="javascript:void(0)" onclick="window.__openAuth()">Đăng nhập / Đăng ký</a>';
+          infoWindow.setContent('<div class="iw"><div class="iname">' + cat.emoji + " " + esc(p.name) + "</div>" +
+            '<div class="imeta">' + cat.label + fmtDist(p) + "</div>" + lock + "</div>");
+          infoWindow.setPosition({ lat: p.lat, lng: p.lng });
+          infoWindow.open(map);
+          return;
+        }
         const dir = "https://www.google.com/maps/dir/?api=1&destination=" + p.lat + "," + p.lng + "&travelmode=driving";
-        const stars = p.rating ? " · ★ " + Number(p.rating).toFixed(1) : "";
+        const rv = p.reviews || { count: 0, avg: null, verified: 0 };
+        const showRating = rv.count > 0 ? rv.avg : p.rating;
+        const stars = showRating ? " · ★ " + Number(showRating).toFixed(1) : "";
+        const rvline = rv.count > 0 ? '<div class="imeta">💬 ' + rv.count + " đánh giá" + (rv.verified ? ' · <span style="color:var(--ok)">✓ ' + rv.verified + " đã kiểm chứng</span>" : "") + "</div>" : "";
         const ph = photosOf(p);
         const gallery = ph.length
           ? '<div class="iw-gallery">' + ph.map((u) => '<img src="' + esc(u) + '" loading="lazy" onerror="this.style.display=\'none\'" />').join("") + "</div>" +
@@ -273,9 +428,10 @@
         const html =
           '<div class="iw">' + gallery +
           '<div class="iname">' + cat.emoji + " " + esc(p.name) + "</div>" +
-          '<div class="imeta">' + cat.label + stars + fmtDist(p) + "</div>" +
+          '<div class="imeta">' + cat.label + stars + fmtDist(p) + "</div>" + rvline +
           (p.description ? '<div class="idesc">' + esc(p.description) + "</div>" : "") +
-          '<a class="dir" href="' + dir + '" target="_blank" rel="noopener">🧭 Chỉ đường</a></div>';
+          '<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="dir" href="' + dir + '" target="_blank" rel="noopener">🧭 Chỉ đường</a>' +
+          '<a class="dir" style="background:#eef3fa;color:var(--navy)" href="javascript:void(0)" onclick="window.__openReviews(\'' + p.id + '\')">💬 Đánh giá</a></div></div>';
         infoWindow.setContent(html);
         infoWindow.setPosition({ lat: p.lat, lng: p.lng });
         infoWindow.open(map);
@@ -328,15 +484,25 @@
       }
 
       function renderList() {
+        const admin = me && me.role === "admin";
+        // Khách/chưa đăng nhập: KHÔNG hiện danh sách quản lý. Member: chỉ điểm của mình. Admin: tất cả.
+        if (!me) { $("listSec").style.display = "none"; $("list").innerHTML = ""; return; }
+        $("listSec").style.display = "";
+        $("listLabel").textContent = admin ? "Quản lý địa điểm" : "Điểm của tôi";
         let arr = visiblePlaces();
+        if (!admin) arr = arr.filter((p) => p.mine);
         if (userPos) arr = arr.slice().sort((a, b) => distKm(userPos, a) - distKm(userPos, b));
-        if (!arr.length) { $("list").innerHTML = '<div class="empty">' + (goodOnly ? "Không có điểm tốt (★≥4) trong 5km quanh bạn." : 'Chưa có địa điểm nào. Bấm "➕ Thêm địa điểm".') + "</div>"; return; }
+        $("counter").textContent = "(" + arr.length + ")";
+        if (!arr.length) { $("list").innerHTML = '<div class="empty">' + (admin ? 'Chưa có địa điểm. Bấm "➕ Thêm địa điểm".' : "Bạn chưa thêm điểm riêng nào.") + "</div>"; return; }
+        const stag = { private: " · 🔒 riêng tư", pending: " · ⏳ chờ duyệt", rejected: " · ✖ bị từ chối" };
         $("list").innerHTML = arr.map((p) => {
           const cat = CATS[p.category] || CATS.an;
           const stars = p.rating ? " · ★" + Number(p.rating).toFixed(1) : "";
+          const st = p.mine && p.status && p.status !== "approved" ? (stag[p.status] || "") : "";
+          const canEdit = admin || p.mine;
+          const acts = canEdit ? `<div class="pacts"><button data-edit="${p.id}">Sửa</button><button class="del" data-del="${p.id}">Xóa</button></div>` : "";
           return `<div class="place" data-id="${p.id}"><span class="pico" style="border-color:${cat.color}">${cat.emoji}</span>` +
-            `<div style="min-width:0"><div class="pn">${esc(p.name)}</div><div class="pm">${cat.label}${stars}${fmtDist(p)}</div></div>` +
-            `<div class="pacts"><button data-edit="${p.id}">Sửa</button><button class="del" data-del="${p.id}">Xóa</button></div></div>`;
+            `<div style="min-width:0"><div class="pn">${esc(p.name)}</div><div class="pm">${cat.label}${stars}${fmtDist(p)}${st}</div></div>` + acts + `</div>`;
         }).join("");
       }
 
@@ -400,7 +566,9 @@
       }
       async function uploadFile(file) {
         const blob = await resizeImage(file);
-        const res = await fetch("/api/places/upload", { method: "POST", headers: { "content-type": "image/jpeg" }, body: blob });
+        const headers = { "content-type": "image/jpeg" };
+        const t = getToken(); if (t) headers.authorization = "Bearer " + t;
+        const res = await fetch("/api/places/upload", { method: "POST", headers, body: blob });
         const data = await res.json();
         if (!data.url) throw new Error(data.error || "Tải ảnh thất bại");
         return data.url;
@@ -440,6 +608,10 @@
         $("searchInput").dataset.addr = p ? (p.address || "") : "";
         draftPhotos = p ? photosOf(p).slice() : [];
         renderThumbs();
+        // Member (không phải admin) thấy ô chọn chế độ: riêng tư / đề xuất
+        const memberMode = me && me.role !== "admin";
+        $("visBox").style.display = memberMode ? "" : "none";
+        if (memberMode) $("pVis").value = p && p.status === "pending" ? "suggest" : "private";
         clearDraft();
         if (p) setDraft(p.lat, p.lng, false); else updateCoordHint();
         $("formPanel").classList.remove("hidden");
@@ -452,19 +624,18 @@
         if (!name) return msg("Nhập tên địa điểm.", false);
         if (!draftPos) return msg("Chưa chọn vị trí — gõ ô tìm kiếm hoặc bấm lên bản đồ.", false);
         $("saveBtn").disabled = true;
+        const suggest = me && me.role !== "admin" && $("pVis").value === "suggest";
         const data = await api("/api/places/save", {
           id: $("placeId").value || undefined, name, lat: draftPos.lat, lng: draftPos.lng,
           category: $("pCat").value, rating: $("pRating").value, photos: draftPhotos,
-          address: $("searchInput").dataset.addr || "", description: $("pDesc").value,
+          address: $("searchInput").dataset.addr || "", description: $("pDesc").value, suggest,
         });
         $("saveBtn").disabled = false;
         if (!data.ok) return msg(data.error || "Lưu thất bại.", false);
-        const fresh = await api("/api/places/list", {});
-        places = fresh.places || [];
+        await loadPlaces();
         closeForm();
         $("fabIcon").textContent = "☰";
-        renderAll();
-        msg("✓ Đã lưu địa điểm.", true);
+        msg(data.status === "pending" ? "✓ Đã gửi đề xuất, chờ admin duyệt." : "✓ Đã lưu địa điểm.", true);
       };
 
       function syncGood() { $("goodBtn").classList.toggle("on", goodOnly); }
@@ -478,6 +649,193 @@
       $("cancelBtn").onclick = () => { closeForm(); $("fabIcon").textContent = "☰"; };
       $("formClose").onclick = () => { closeForm(); $("fabIcon").textContent = "☰"; };
       $("panelClose").onclick = () => closePanel();
+
+      // Đăng nhập / đăng ký
+      $("tabLogin").onclick = () => { authMode = "login"; syncAuthTabs(); };
+      $("tabSignup").onclick = () => { authMode = "signup"; syncAuthTabs(); };
+      $("authClose").onclick = closeAuth;
+      $("authSubmit").onclick = async () => {
+        const email = $("auEmail").value.trim(), pass = $("auPass").value;
+        if (!email || !pass) return msg("Nhập email và mật khẩu.", false);
+        $("authSubmit").disabled = true;
+        const path = authMode === "login" ? "/api/auth/login" : "/api/auth/signup";
+        const body = authMode === "login" ? { email, password: pass } : { email, password: pass, name: $("auName").value.trim() };
+        const data = await api(path, body);
+        $("authSubmit").disabled = false;
+        if (data.error) return msg(data.error, false);
+        setToken(data.token);
+        location.reload();
+      };
+
+      // ---------- Tour (khách xem lộ trình) ----------
+      let tourMode = null, tourPoly = null;
+      const tourMarkers = [];
+      function tourStopEl(n) {
+        const el = document.createElement("div");
+        el.className = "mkpin";
+        el.style.setProperty("--ring", "#0a5ca3");
+        el.innerHTML = '<span class="mkpin-ico" style="background:#0a5ca3;color:#fff;font-weight:700;font-size:14px">' + n + '</span><span class="mkpin-tail"></span>';
+        return el;
+      }
+      function clearTourLayer() { tourMarkers.forEach((o) => o.setMap(null)); tourMarkers.length = 0; if (tourPoly) { tourPoly.setMap(null); tourPoly = null; } }
+      let allTours = [], tourCanView = false;
+      $("tourBtn").onclick = async () => {
+        closePanel();
+        const d = await api("/api/tours/list", {});
+        allTours = d.tours || []; tourCanView = !!d.canView;
+        $("tourSearch").value = "";
+        renderTourList("");
+        $("tourListPanel").classList.remove("hidden");
+        $("fabIcon").textContent = "✕";
+      };
+      function renderTourList(filter) {
+        const f = (filter || "").trim().toLowerCase();
+        const list = allTours.filter((t) => !f || (t.title || "").toLowerCase().includes(f));
+        $("tourListBox").innerHTML = list.length
+          ? list.map((t) => '<div class="tourrow" data-id="' + t.id + '"><div style="min-width:0"><div class="pn">' + esc(t.title) + '</div><div class="pm">' + t.dayCount + ' ngày</div></div>' + (tourCanView ? '<span class="go">›</span>' : '<span class="lockpill">🔒 Upgrade</span>') + "</div>").join("")
+          : '<div class="empty">' + (f ? "Không tìm thấy tour phù hợp." : "Chưa có tour nào.") + "</div>";
+      }
+      $("tourSearch").addEventListener("input", (e) => renderTourList(e.target.value));
+      $("tourListClose").onclick = () => { $("tourListPanel").classList.add("hidden"); $("fabIcon").textContent = "☰"; };
+      $("tourListBox").addEventListener("click", async (e) => {
+        const row = e.target.closest(".tourrow"); if (!row) return;
+        const d = await api("/api/tours/get", { id: row.dataset.id });
+        if (d.error) return msg(d.error, false);
+        if (d.locked) {
+          // 🔒 Chưa đủ quyền: mời nâng cấp / đăng ký (không rời danh sách)
+          if (me) msg("🔒 Cần tài khoản trả phí (được admin cấp) để xem lộ trình. Liên hệ admin để nâng cấp.", false);
+          else { $("tourListPanel").classList.add("hidden"); $("fabIcon").textContent = "☰"; openAuth(); }
+          return;
+        }
+        enterTour(d.tour);
+      });
+      function enterTour(t) {
+        tourMode = t;
+        $("tourListPanel").classList.add("hidden");
+        infoWindow.close();
+        markers.forEach((o) => o.setMap(null)); markers.clear();
+        clearTourLayer();
+        const path = []; let n = 0;
+        t.days.forEach((d) => d.stops.forEach((s) => {
+          if (!s.place) return; n++;
+          const el = tourStopEl(n); el.addEventListener("click", () => openInfo(s.place));
+          const ov = new OverlayCls({ lat: s.place.lat, lng: s.place.lng }, el);
+          ov.setMap(map); tourMarkers.push(ov); path.push({ lat: s.place.lat, lng: s.place.lng });
+        }));
+        if (path.length) { tourPoly = new google.maps.Polyline({ path, map, strokeColor: "#0a5ca3", strokeOpacity: 0.85, strokeWeight: 4, geodesic: true }); const b = new google.maps.LatLngBounds(); path.forEach((x) => b.extend(x)); map.fitBounds(b, 80); }
+        renderTourView(t);
+        $("tourViewPanel").classList.remove("hidden");
+        $("fabIcon").textContent = "✕";
+      }
+      function renderTourView(t) {
+        $("tourTitle").textContent = t.title;
+        let n = 0;
+        $("tourDays").innerHTML = t.days.map((d) =>
+          '<div class="tday"><div class="tdh">' + esc(d.title || ("Ngày " + d.day_no)) + "</div>" +
+          (d.note ? '<div class="tnote">' + esc(d.note) + "</div>" : "") +
+          d.stops.filter((s) => s.place).map((s) => { n++; const p = s.place; const cat = CATS[p.category] || CATS.an;
+            return '<div class="tstop" data-pid="' + p.id + '"><span class="tnum">' + n + '</span><div style="min-width:0"><div class="pn">' + cat.emoji + " " + esc(p.name) + '</div>' + (s.guide ? '<div class="pm">' + esc(s.guide) + "</div>" : "") + "</div></div>";
+          }).join("") + "</div>"
+        ).join("");
+      }
+      $("tourDays").addEventListener("click", (e) => {
+        const row = e.target.closest(".tstop"); if (!row || !tourMode) return;
+        let place = null;
+        tourMode.days.forEach((d) => d.stops.forEach((s) => { if (s.place && s.place.id === row.dataset.pid) place = s.place; }));
+        if (place) { map.panTo({ lat: place.lat, lng: place.lng }); map.setZoom(16); openInfo(place); }
+      });
+      function exitTour() { tourMode = null; clearTourLayer(); $("tourViewPanel").classList.add("hidden"); $("fabIcon").textContent = "☰"; loadPlaces(); }
+      $("tourExit").onclick = exitTour;
+      $("tourViewClose").onclick = exitTour;
+
+      // ---------- Admin: duyệt đề xuất điểm của user ----------
+      $("pendingBtn").onclick = async () => {
+        closePanel();
+        const d = await api("/api/admin/places/pending", {});
+        const ps = d.places || [];
+        $("pendingBox").innerHTML = ps.length ? ps.map((p) => {
+          const cat = CATS[p.category] || CATS.an;
+          return '<div class="place"><span class="pico" style="border-color:' + cat.color + '">' + cat.emoji + '</span>' +
+            '<div style="min-width:0"><div class="pn">' + esc(p.name) + '</div><div class="pm">' + cat.label + ' · ' + esc(p.owner_email || "?") + '</div></div>' +
+            '<div class="pacts"><button data-appr="' + p.id + '">Duyệt</button><button class="del" data-rej="' + p.id + '">Từ chối</button></div></div>';
+        }).join("") : '<div class="empty">Không có đề xuất nào chờ duyệt.</div>';
+        $("pendingPanel").classList.remove("hidden"); $("fabIcon").textContent = "✕";
+      };
+      $("pendingClose").onclick = () => { $("pendingPanel").classList.add("hidden"); $("fabIcon").textContent = "☰"; };
+      $("pendingBox").addEventListener("click", async (e) => {
+        const ap = e.target.getAttribute("data-appr"), rj = e.target.getAttribute("data-rej");
+        if (ap) { const d = await api("/api/admin/places/approve", { id: ap }); if (d.ok) { msg("✓ Đã duyệt điểm.", true); $("pendingBtn").click(); loadPlaces(); } else msg(d.error || "Lỗi.", false); }
+        else if (rj) { if (!confirm("Từ chối (xóa) đề xuất này?")) return; const d = await api("/api/admin/places/reject", { id: rj }); if (d.ok) { msg("✓ Đã từ chối.", true); $("pendingBtn").click(); } else msg(d.error || "Lỗi.", false); }
+      });
+
+      // ---------- Đánh giá địa điểm ----------
+      let rvPlaceId = null, rvRating = 0, rvPhotos = [];
+      window.__openReviews = openReviews;
+      async function openReviews(placeId) {
+        infoWindow.close();
+        rvPlaceId = placeId; rvPhotos = []; rvRating = 0;
+        const p = places.find((x) => x.id === placeId);
+        $("rvTitle").textContent = "Đánh giá · " + (p ? p.name : "");
+        $("rvContent").value = "";
+        const d = await api("/api/reviews/list", { place_id: placeId });
+        const canReview = d.canReview && !!me;
+        $("rvForm").style.display = canReview ? "" : "none";
+        if (canReview && d.reviews) {
+          const mineR = d.reviews.find((r) => r.mine);
+          if (mineR) { rvRating = mineR.rating; $("rvContent").value = mineR.content; rvPhotos = (mineR.photos || []).slice(); }
+          $("rvSubmit").textContent = mineR ? "Cập nhật đánh giá" : "Gửi đánh giá";
+        }
+        renderStars(); renderRvThumbs(); updateRvCount(); rvCheckinNote();
+        renderReviews(d.reviews || [], d.locked);
+        $("reviewPanel").classList.remove("hidden"); $("fabIcon").textContent = "✕";
+      }
+      function renderStars() { $("rvStars").innerHTML = [1, 2, 3, 4, 5].map((i) => '<span class="rvstar' + (i <= rvRating ? " on" : "") + '" data-star="' + i + '">★</span>').join(""); }
+      $("rvStars").addEventListener("click", (e) => { const s = e.target.getAttribute("data-star"); if (s) { rvRating = +s; renderStars(); } });
+      function updateRvCount() { const n = $("rvContent").value.trim().length; $("rvCount").textContent = n + " / 100 ký tự" + (n >= 100 ? " ✓" : ""); $("rvCount").style.color = n >= 100 ? "var(--ok)" : "var(--muted)"; }
+      $("rvContent").addEventListener("input", updateRvCount);
+      $("rvPick").onclick = () => $("rvFiles").click();
+      $("rvFiles").addEventListener("change", async (e) => {
+        const files = [...e.target.files]; e.target.value = "";
+        $("rvPick").disabled = true; $("rvPick").textContent = "⏳ Đang tải...";
+        for (const f of files) { if (rvPhotos.length >= 10) break; try { rvPhotos.push(await uploadFile(f)); renderRvThumbs(); } catch (err) { msg(err.message, false); } }
+        $("rvPick").disabled = false; $("rvPick").textContent = "📷 Thêm ảnh";
+      });
+      function renderRvThumbs() { $("rvThumbs").innerHTML = rvPhotos.map((u, i) => `<div class="thumb"><img src="${esc(u)}" /><button type="button" data-rvrm="${i}">✕</button></div>`).join(""); }
+      $("rvThumbs").addEventListener("click", (e) => { const i = e.target.getAttribute("data-rvrm"); if (i != null) { rvPhotos.splice(+i, 1); renderRvThumbs(); } });
+      function rvCheckinNote() {
+        const p = places.find((x) => x.id === rvPlaceId);
+        if (userPos && p) { const dk = distKm(userPos, p); $("rvCheckin").innerHTML = dk <= 0.15 ? '✓ Bạn đang ở đây — đánh giá sẽ được <b>kiểm chứng</b>.' : "Bạn cách điểm ~" + dk.toFixed(dk < 10 ? 1 : 0) + " km. Vẫn gửi được nhưng không có dấu kiểm chứng."; }
+        else $("rvCheckin").textContent = "Bật vị trí (📍) để đánh giá được kiểm chứng khi bạn ở nơi đó.";
+      }
+      $("rvSubmit").onclick = async () => {
+        if (!rvRating) return msg("Chọn số sao (1–5).", false);
+        const content = $("rvContent").value.trim();
+        if (content.length < 100) return msg("Đánh giá cần tối thiểu 100 ký tự (hiện " + content.length + ").", false);
+        $("rvSubmit").disabled = true;
+        const body = { place_id: rvPlaceId, rating: rvRating, content, photos: rvPhotos };
+        if (userPos) { body.lat = userPos.lat; body.lng = userPos.lng; }
+        const d = await api("/api/reviews/save", body);
+        $("rvSubmit").disabled = false;
+        if (d.error) return msg(d.error, false);
+        msg(d.verified ? "✓ Đã gửi đánh giá (đã kiểm chứng)." : "✓ Đã gửi đánh giá.", true);
+        await loadPlaces();
+        openReviews(rvPlaceId);
+      };
+      function renderReviews(reviews, locked) {
+        if (locked) { $("rvList").innerHTML = '<div class="empty">🔒 Nâng cấp gói trả phí để xem đánh giá chi tiết.</div>'; return; }
+        if (!reviews.length) { $("rvList").innerHTML = '<div class="empty">Chưa có đánh giá nào. Hãy là người đầu tiên!</div>'; return; }
+        const admin = me && me.role === "admin";
+        $("rvList").innerHTML = reviews.map((r) =>
+          '<div class="rvitem"><div class="rvhead"><b>' + esc(r.author) + '</b> <span class="rvst">' + "★".repeat(r.rating) + "</span>" + (r.verified ? ' <span class="vbadge">✓ kiểm chứng</span>' : "") + (admin || r.mine ? '<button class="del" data-rvdel="' + r.id + '" style="margin-left:auto">Xóa</button>' : "") + "</div>" +
+          '<div class="rvtext">' + esc(r.content) + "</div>" +
+          (r.photos && r.photos.length ? '<div class="iw-gallery">' + r.photos.map((u) => '<img src="' + esc(u) + '" loading="lazy" />').join("") + "</div>" : "") + "</div>"
+        ).join("");
+      }
+      $("rvList").addEventListener("click", async (e) => {
+        const del = e.target.getAttribute("data-rvdel");
+        if (del) { if (!confirm("Xóa đánh giá này?")) return; const d = await api("/api/reviews/delete", { id: del }); if (d.ok) { msg("✓ Đã xóa.", true); await loadPlaces(); openReviews(rvPlaceId); } else msg(d.error || "Lỗi.", false); }
+      });
+      $("rvClose").onclick = () => { $("reviewPanel").classList.add("hidden"); $("fabIcon").textContent = "☰"; };
 
       (function () {
         const fab = $("fab"); let sx, sy, ox, oy, moved = false, dragging = false;

@@ -1,0 +1,22 @@
+name: Giu Supabase khong bi pause
+
+# Supabase free tier tu pause project sau 7 ngay khong co request nao.
+# Job nay goi /api/keepalive moi ngay -> app goi that vao Supabase Storage API
+# bang service key luu san trong Cloudflare KV (khong can secret o GitHub).
+
+on:
+  schedule:
+    - cron: "17 1 * * *" # 08:17 gio VN moi ngay
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Danh thuc Supabase
+        run: |
+          echo "Ping luc $(date -u) UTC"
+          body=$(curl -sS --max-time 30 --retry 3 --retry-delay 10 \
+            https://travel.2bkin.io.vn/api/keepalive)
+          echo "Ket qua: $body"
+          echo "$body" | grep -q '"ok":true' || { echo "::error::Supabase khong phan hoi OK — project co the da bi pause, vao dashboard bam Restore."; exit 1; }

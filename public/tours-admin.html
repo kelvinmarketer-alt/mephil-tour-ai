@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quản lý Tour · Bản đồ Mê Philippines</title>
+    <link rel="icon" href="/favicon-32.png" type="image/png" />
+    <meta name="theme-color" content="#0a5ca3" />
+    <style>
+      :root { --navy: #0a5ca3; --navy-2: #0b6ec4; --line: #e2eaf3; --ink: #14283f; --muted: #6b7d92; --ok: #1a8a4a; --bad: #c0392b; }
+      * { box-sizing: border-box; }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: var(--ink); background: #eef3fb; margin: 0; }
+      header { background: linear-gradient(135deg, var(--navy), var(--navy-2)); color: #fff; padding: 16px 20px; display: flex; align-items: center; gap: 12px; }
+      header .logo { width: 34px; height: 34px; border-radius: 9px; background: #fff; object-fit: contain; padding: 2px; }
+      header h1 { font-size: 16px; margin: 0; }
+      header .nav { margin-left: auto; display: flex; gap: 8px; }
+      header .nav a { color: #fff; text-decoration: none; font-size: 14px; background: rgba(255,255,255,.15); padding: 7px 12px; border-radius: 8px; }
+      main { max-width: 820px; margin: 22px auto; padding: 0 16px 60px; }
+      .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+      .card h2 { font-size: 15px; margin: 0 0 4px; }
+      .sub { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
+      label { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 5px; }
+      input, textarea, select { width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; font: inherit; font-size: 14px; outline: none; background: #fff; }
+      textarea { min-height: 54px; resize: vertical; line-height: 1.5; }
+      input:focus, textarea:focus, select:focus { border-color: var(--navy-2); }
+      button { background: var(--navy); color: #fff; border: 0; border-radius: 9px; padding: 10px 15px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+      button.ghost { background: #fff; color: var(--navy); border: 1px solid #c9d8ea; }
+      button.danger { background: #fff; color: var(--bad); border: 1px solid #f3c4be; }
+      button.sm { padding: 5px 10px; font-size: 12px; }
+      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      #msg { font-size: 14px; padding: 10px 12px; border-radius: 9px; margin-bottom: 14px; display: none; }
+      #msg.ok { display: block; background: #e6f6ec; color: var(--ok); }
+      #msg.err { display: block; background: #fdecea; color: var(--bad); }
+      .tourcard { border: 1px solid var(--line); border-radius: 11px; padding: 12px 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+      .tourcard .t { font-weight: 600; font-size: 14px; }
+      .tourcard .m { font-size: 12px; color: var(--muted); }
+      .tourcard .acts { margin-left: auto; display: flex; gap: 6px; }
+      .badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+      .badge.pub { background: #e6f6ec; color: var(--ok); }
+      .badge.draft { background: #f1eef7; color: #6b5b95; }
+      .day { border: 1px solid var(--line); border-left: 4px solid var(--navy-2); border-radius: 10px; padding: 12px; margin: 10px 0; background: #fafcff; }
+      .dayhead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+      .dayhead b { font-size: 14px; }
+      .dayhead button { margin-left: auto; }
+      .stops { margin: 8px 0; }
+      .stop { display: grid; grid-template-columns: 1.1fr 1.4fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+      #editor { display: none; }
+      @media (max-width: 560px) { .stop { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img class="logo" src="/icon-192.png" alt="Mê Philippines" />
+      <h1>Quản lý Tour</h1>
+      <div class="nav"><a href="/map">🗺️ Bản đồ</a><a href="/users">👥 User</a></div>
+    </header>
+
+    <main>
+      <div id="msg"></div>
+
+      <div id="gate" class="card">
+        <h2>Đăng nhập admin</h2>
+        <p class="sub">Trang tạo tour chỉ dành cho admin.</p>
+        <label>Email</label><input id="gEmail" type="email" placeholder="admin@..." />
+        <label>Mật khẩu</label><input id="gPass" type="password" />
+        <div class="row" style="margin-top:12px"><button id="gLogin" type="button">Đăng nhập</button></div>
+      </div>
+
+      <div id="panel" style="display:none">
+        <div class="card">
+          <div class="row" style="justify-content:space-between">
+            <div><h2 style="margin:0">Danh sách tour</h2><p class="sub" style="margin:2px 0 0" id="count"></p></div>
+            <button id="newBtn" type="button">➕ Tạo tour</button>
+          </div>
+          <div id="list" style="margin-top:12px"></div>
+        </div>
+
+        <div class="card" id="editor">
+          <h2 id="editorTitle">Tạo tour</h2>
+          <label>Tên tour</label><input id="tTitle" type="text" placeholder="vd: Xuyên Việt 3N2Đ — Hà Nội · Thanh Hóa · Hải Phòng" />
+          <label>Mô tả ngắn</label><textarea id="tDesc" placeholder="Giới thiệu tour..."></textarea>
+          <div class="row">
+            <div style="flex:1;min-width:200px"><label>Ảnh bìa (link, tùy chọn)</label><input id="tCover" type="text" placeholder="https://..." /></div>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:22px;font-weight:600"><input id="tPub" type="checkbox" style="width:auto" /> Công khai (khách thấy)</label>
+          </div>
+
+          <div style="margin-top:14px" class="row" style="justify-content:space-between">
+            <b style="font-size:14px">Lịch trình theo ngày</b>
+          </div>
+          <div id="days"></div>
+          <button id="addDay" class="ghost" type="button" style="margin-top:8px">➕ Thêm ngày</button>
+
+          <div class="row" style="margin-top:16px"><button id="saveBtn" type="button">💾 Lưu tour</button><button class="ghost" id="cancelBtn" type="button">Hủy</button></div>
+        </div>
+      </div>
+      <datalist id="placeOpts"></datalist>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const q = (sel) => document.querySelector(sel);
+      const msg = (t, ok) => { const m = $("msg"); m.textContent = t; m.className = ok ? "ok" : "err"; window.scrollTo(0, 0); };
+      const esc = (s) => (s || "").toString().replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      const TOKEN_KEY = "mephil_token";
+      const getToken = () => localStorage.getItem(TOKEN_KEY) || "";
+      const setToken = (t) => (t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY));
+      const CATEMOJI = { an: "🍜", cafe: "☕", choi: "🍸", checkin: "📸" };
+      let PLACES = [], tours = [], tour = null;
+
+      async function api(path, body) {
+        const headers = { "content-type": "application/json" };
+        const t = getToken(); if (t) headers.authorization = "Bearer " + t;
+        return (await fetch(path, { method: "POST", headers, body: JSON.stringify(body || {}) })).json();
+      }
+      async function me() { const t = getToken(); if (!t) return null; return (await (await fetch("/api/auth/me", { headers: { authorization: "Bearer " + t } })).json()).user || null; }
+
+      let idToName = {}, nameToId = {};
+      function buildPlaceIndex() {
+        idToName = {}; nameToId = {};
+        PLACES.forEach((p) => { const label = (CATEMOJI[p.category] || "") + " " + p.name; idToName[p.id] = label; nameToId[label] = p.id; nameToId[p.name] = p.id; });
+        document.getElementById("placeOpts").innerHTML = PLACES.map((p) => '<option value="' + esc((CATEMOJI[p.category] || "") + " " + p.name) + '"></option>').join("");
+      }
+      function stopHTML(s, di, si) {
+        return '<div class="stop"><input list="placeOpts" data-place="' + di + "-" + si + '" placeholder="🔍 Gõ tên điểm để chọn..." value="' + esc(idToName[s.place_id] || "") + '" />' +
+          '<input placeholder="Hướng dẫn: đến làm gì" value="' + esc(s.guide) + '" data-guide="' + di + "-" + si + '" />' +
+          '<button class="danger sm" data-delstop="' + di + "-" + si + '" type="button">✕</button></div>';
+      }
+      function renderDays() {
+        $("days").innerHTML = tour.days.map((d, di) =>
+          '<div class="day"><div class="dayhead"><b>Ngày ' + (di + 1) + '</b><button class="danger sm" data-delday="' + di + '" type="button">Xóa ngày</button></div>' +
+          '<input placeholder="Tiêu đề ngày (vd: Hà Nội → Thanh Hóa)" value="' + esc(d.title) + '" data-dtitle="' + di + '" />' +
+          '<textarea placeholder="Ghi chú ngày (tùy chọn)" data-dnote="' + di + '">' + esc(d.note) + "</textarea>" +
+          '<div class="stops">' + d.stops.map((s, si) => stopHTML(s, di, si)).join("") + "</div>" +
+          '<button class="ghost sm" data-addstop="' + di + '" type="button">➕ Thêm điểm dừng</button></div>'
+        ).join("");
+      }
+      function syncFromDom() {
+        tour.days.forEach((d, di) => {
+          const dt = q('[data-dtitle="' + di + '"]'); if (dt) d.title = dt.value;
+          const dn = q('[data-dnote="' + di + '"]'); if (dn) d.note = dn.value;
+          d.stops.forEach((s, si) => {
+            const ps = q('[data-place="' + di + "-" + si + '"]'); if (ps) s.place_id = nameToId[ps.value.trim()] || "";
+            const g = q('[data-guide="' + di + "-" + si + '"]'); if (g) s.guide = g.value;
+          });
+        });
+      }
+
+      async function loadTours() {
+        const d = await api("/api/tours/list", {});
+        if (d.error) { msg(d.error, false); return; }
+        tours = d.tours || [];
+        $("count").textContent = tours.length + " tour";
+        $("list").innerHTML = tours.length ? tours.map((t) =>
+          '<div class="tourcard"><div><div class="t">' + esc(t.title) + '</div><div class="m">' + t.dayCount + ' ngày</div></div>' +
+          '<span class="badge ' + (t.published ? "pub" : "draft") + '">' + (t.published ? "Công khai" : "Nháp") + "</span>" +
+          '<div class="acts"><button class="ghost sm" data-edit="' + t.id + '">Sửa</button><button class="danger sm" data-del="' + t.id + '">Xóa</button></div></div>'
+        ).join("") : '<div class="sub">Chưa có tour nào. Bấm "➕ Tạo tour".</div>';
+      }
+
+      function openEditor(t) {
+        tour = t ? JSON.parse(JSON.stringify(t)) : { id: null, title: "", description: "", cover_photo: "", published: false, days: [] };
+        $("editorTitle").textContent = t ? "Sửa tour" : "Tạo tour";
+        $("tTitle").value = tour.title || "";
+        $("tDesc").value = tour.description || "";
+        $("tCover").value = tour.cover_photo || "";
+        $("tPub").checked = !!tour.published;
+        renderDays();
+        $("editor").style.display = "block";
+        $("editor").scrollIntoView({ behavior: "smooth" });
+      }
+
+      $("newBtn").onclick = () => openEditor(null);
+      $("cancelBtn").onclick = () => { $("editor").style.display = "none"; };
+      $("addDay").onclick = () => { syncFromDom(); tour.days.push({ title: "", note: "", stops: [] }); renderDays(); };
+      $("days").addEventListener("click", (e) => {
+        const dd = e.target.getAttribute("data-delday"), as = e.target.getAttribute("data-addstop"), ds = e.target.getAttribute("data-delstop");
+        if (dd != null) { syncFromDom(); tour.days.splice(+dd, 1); renderDays(); }
+        else if (as != null) { syncFromDom(); tour.days[+as].stops.push({ place_id: "", guide: "" }); renderDays(); }
+        else if (ds != null) { syncFromDom(); const [di, si] = ds.split("-").map(Number); tour.days[di].stops.splice(si, 1); renderDays(); }
+      });
+
+      $("saveBtn").onclick = async () => {
+        syncFromDom();
+        const payload = {
+          id: tour.id || undefined,
+          title: $("tTitle").value.trim(),
+          description: $("tDesc").value.trim(),
+          cover_photo: $("tCover").value.trim(),
+          published: $("tPub").checked,
+          days: tour.days.map((d) => ({ title: d.title, note: d.note, stops: d.stops.filter((s) => s.place_id).map((s) => ({ place_id: s.place_id, guide: s.guide })) })),
+        };
+        if (!payload.title) return msg("Nhập tên tour.", false);
+        const d = await api("/api/admin/tours/save", payload);
+        if (d.error) return msg(d.error, false);
+        msg("✓ Đã lưu tour.", true); $("editor").style.display = "none"; loadTours();
+      };
+
+      $("list").addEventListener("click", async (e) => {
+        const ed = e.target.getAttribute("data-edit"), del = e.target.getAttribute("data-del");
+        if (ed) { const d = await api("/api/tours/get", { id: ed }); if (d.tour) openEditor(d.tour); else msg(d.error || "Lỗi tải tour.", false); return; }
+        if (del) { if (!confirm("Xóa tour này?")) return; const d = await api("/api/admin/tours/delete", { id: del }); if (d.ok) { msg("✓ Đã xóa.", true); loadTours(); } else msg(d.error || "Lỗi.", false); }
+      });
+
+      $("gLogin").onclick = async () => {
+        const d = await api("/api/auth/login", { email: $("gEmail").value.trim(), password: $("gPass").value });
+        if (d.error) return msg(d.error, false);
+        if (d.user.role !== "admin") return msg("Tài khoản này không phải admin.", false);
+        setToken(d.token); enter(d.user);
+      };
+      async function enter(user) {
+        if (user && user.role === "admin") {
+          $("gate").style.display = "none"; $("panel").style.display = "block";
+          const pl = await api("/api/places/list", {}); PLACES = pl.places || [];
+          buildPlaceIndex();
+          loadTours();
+        } else { $("gate").style.display = "block"; $("panel").style.display = "none"; }
+      }
+      (async () => enter(await me()))();
+    </script>
+  </body>
+</html>

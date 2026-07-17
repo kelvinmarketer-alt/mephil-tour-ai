@@ -137,9 +137,6 @@ async function getPlaces(env) {
     return [];
   }
 }
-async function savePlaces(env, places) {
-  await env.SETTINGS.put("places", JSON.stringify(places));
-}
 async function getGoogleMapsKey(env) {
   if (!env.SETTINGS) return null;
   return await env.SETTINGS.get("google_maps_api_key");
@@ -161,8 +158,75 @@ async function getSupabase(env) {
   return { url: normalizeSupabaseUrl(url), key: key || null };
 }
 
+// src/auth.js
+var enc = new TextEncoder();
+var DAY = 864e5;
+var bufToHex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+var hexToBuf = (hex) => {
+  const a = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < a.length; i++) a[i] = parseInt(hex.substr(i * 2, 2), 16);
+  return a;
+};
+var uuid = () => crypto.randomUUID();
+var newToken = () => bufToHex(crypto.getRandomValues(new Uint8Array(32)));
+async function hashPassword(password, saltHex) {
+  const salt = saltHex ? hexToBuf(saltHex) : crypto.getRandomValues(new Uint8Array(16));
+  const km = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 1e5, hash: "SHA-256" }, km, 256);
+  return { hash: bufToHex(bits), salt: bufToHex(salt) };
+}
+async function verifyPassword(password, saltHex, expected) {
+  const { hash } = await hashPassword(password, saltHex);
+  if (hash.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < hash.length; i++) diff |= hash.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
+}
+var publicUser = (u) => u ? { id: u.id, email: u.email, name: u.name, role: u.role, plan: u.plan, expires_at: u.expires_at, created_at: u.created_at } : null;
+async function getUserByEmail(env, email) {
+  return await env.DB.prepare("SELECT * FROM users WHERE email=?").bind((email || "").trim().toLowerCase()).first();
+}
+async function getUserById(env, id) {
+  return await env.DB.prepare("SELECT * FROM users WHERE id=?").bind(id).first();
+}
+async function createUser(env, { email, password, name, role = "user", plan = "trial", expires_at }) {
+  email = (email || "").trim().toLowerCase();
+  if (!email || !email.includes("@")) throw new Error("Email kh\xF4ng h\u1EE3p l\u1EC7.");
+  if (!password || password.length < 6) throw new Error("M\u1EADt kh\u1EA9u t\u1ED1i thi\u1EC3u 6 k\xFD t\u1EF1.");
+  if (await getUserByEmail(env, email)) throw new Error("Email \u0111\xE3 t\u1ED3n t\u1EA1i.");
+  const { hash, salt } = await hashPassword(password);
+  const now = Date.now();
+  const id = uuid();
+  const exp = expires_at !== void 0 && expires_at !== null ? expires_at : plan === "trial" ? now + 3 * DAY : null;
+  await env.DB.prepare("INSERT INTO users (id,email,password_hash,salt,name,role,plan,expires_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(id, email, hash, salt, name || null, role, plan, exp, now, now).run();
+  return await getUserById(env, id);
+}
+async function createSession(env, userId) {
+  const t = newToken();
+  const now = Date.now();
+  await env.DB.prepare("INSERT INTO sessions (token,user_id,created_at,expires_at) VALUES (?,?,?,?)").bind(t, userId, now, now + 30 * DAY).run();
+  return t;
+}
+async function deleteSession(env, t) {
+  if (t) await env.DB.prepare("DELETE FROM sessions WHERE token=?").bind(t).run();
+}
+function bearerToken(request) {
+  const h = request.headers.get("authorization") || "";
+  return h.startsWith("Bearer ") ? h.slice(7).trim() : null;
+}
+async function sessionUser(request, env) {
+  const t = bearerToken(request);
+  if (!t || !env.DB) return null;
+  const s = await env.DB.prepare("SELECT * FROM sessions WHERE token=?").bind(t).first();
+  if (!s || s.expires_at < Date.now()) return null;
+  return await getUserById(env, s.user_id);
+}
+var isAdmin2 = (u) => !!u && u.role === "admin";
+var isActive = (u) => !!u && (u.role === "admin" || u.expires_at != null && u.expires_at > Date.now());
+var isPaid = (u) => !!u && (u.role === "admin" || ["month", "year"].includes(u.plan) && u.expires_at != null && u.expires_at > Date.now());
+
 // src/index.js
-var src_default = {
+var index_default = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const p = url.pathname;
@@ -183,6 +247,26 @@ var src_default = {
       if (request.method === "POST" && p === "/api/places/mapkey") return await handlePlacesMapKey(request, env);
       if (request.method === "POST" && p === "/api/places/upload") return await handlePlacesUpload(request, env);
       if (request.method === "GET" && p.startsWith("/img/")) return await handleImg(p.slice(5), env);
+      if (request.method === "GET" && p === "/api/keepalive") return await handleKeepalive(env);
+      if (request.method === "POST" && p === "/api/auth/signup") return await handleSignup(request, env);
+      if (request.method === "POST" && p === "/api/auth/login") return await handleLogin(request, env);
+      if (request.method === "POST" && p === "/api/auth/logout") return await handleLogout(request, env);
+      if (request.method === "GET" && p === "/api/auth/me") return await handleMe(request, env);
+      if (request.method === "POST" && p === "/api/auth/bootstrap-admin") return await handleBootstrapAdmin(request, env);
+      if (request.method === "POST" && p === "/api/admin/users/list") return await handleUsersList(request, env);
+      if (request.method === "POST" && p === "/api/admin/users/save") return await handleUsersSave(request, env);
+      if (request.method === "POST" && p === "/api/admin/users/delete") return await handleUsersDelete(request, env);
+      if (request.method === "POST" && p === "/api/tours/list") return await handleToursList(request, env);
+      if (request.method === "POST" && p === "/api/tours/get") return await handleToursGet(request, env);
+      if (request.method === "POST" && p === "/api/admin/tours/save") return await handleAdminToursSave(request, env);
+      if (request.method === "POST" && p === "/api/admin/tours/delete") return await handleAdminToursDelete(request, env);
+      if (request.method === "POST" && p === "/api/admin/migrate-places") return await handleMigratePlaces(request, env);
+      if (request.method === "POST" && p === "/api/admin/places/pending") return await handlePendingList(request, env);
+      if (request.method === "POST" && p === "/api/admin/places/approve") return await handleApprovePlace(request, env);
+      if (request.method === "POST" && p === "/api/admin/places/reject") return await handleRejectPlace(request, env);
+      if (request.method === "POST" && p === "/api/reviews/list") return await handleReviewsList(request, env);
+      if (request.method === "POST" && p === "/api/reviews/save") return await handleReviewsSave(request, env);
+      if (request.method === "POST" && p === "/api/reviews/delete") return await handleReviewsDelete(request, env);
     } catch (e) {
       return json({ error: "L\u1ED7i: " + e.message }, 500);
     }
@@ -364,45 +448,202 @@ async function handleDocsDelete(request, env) {
   return json({ ok: true });
 }
 var PLACE_CATS = ["an", "cafe", "choi", "checkin"];
+function placeRow(r) {
+  return { id: r.id, name: r.name, lat: r.lat, lng: r.lng, category: r.category, description: r.description || "", photos: r.photos ? JSON.parse(r.photos) : [], address: r.address || "", rating: r.rating, owner_id: r.owner_id, status: r.status, createdAt: r.created_at, updatedAt: r.updated_at };
+}
+async function dbAllPlaces(env) {
+  const { results } = await env.DB.prepare("SELECT * FROM places").all();
+  return (results || []).map(placeRow);
+}
+async function dbPlace(env, id) {
+  const r = await env.DB.prepare("SELECT * FROM places WHERE id=?").bind(id).first();
+  return r ? placeRow(r) : null;
+}
+async function ensurePlaces(env) {
+  if (!env.DB || !env.SETTINGS) return;
+  if (await env.SETTINGS.get("places_migrated")) return;
+  const c = await env.DB.prepare("SELECT COUNT(*) AS n FROM places").first();
+  if (!c || c.n === 0) {
+    const kv = await getPlaces(env);
+    const now = Date.now();
+    for (const p of kv) {
+      await env.DB.prepare("INSERT OR IGNORE INTO places (id,name,lat,lng,category,description,photos,address,rating,owner_id,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(p.id, p.name, p.lat, p.lng, p.category || "an", p.description || "", JSON.stringify(p.photos || []), p.address || "", p.rating ?? null, null, "approved", p.createdAt || now, p.updatedAt || now).run();
+    }
+  }
+  await env.SETTINGS.put("places_migrated", "1");
+}
 async function handlePlacesList(request, env) {
-  return json({ places: await getPlaces(env) });
+  await ensurePlaces(env);
+  const u = await sessionUser(request, env);
+  const uid = u ? u.id : null;
+  const all = await dbAllPlaces(env);
+  const strip = (p) => ({ id: p.id, name: p.name, category: p.category, lat: p.lat, lng: p.lng, locked: true });
+  const isMine = (p) => !!uid && p.owner_id === uid;
+  const stats = await reviewStats(env);
+  const flag = (p) => ({ ...p, mine: isMine(p), reviews: stats[p.id] || { count: 0, avg: null, verified: 0 } });
+  if (isAdmin2(u)) return json({ places: all.map(flag), full: true, tier: "admin" });
+  const mine = all.filter(isMine);
+  const official = all.filter((p) => p.status === "approved" && !isMine(p));
+  if (isPaid(u)) return json({ places: [...official, ...mine].map(flag), full: true, tier: "paid" });
+  if (isActive(u)) return json({ places: [...official.map(strip), ...mine.map(flag)], full: false, tier: "trial" });
+  const b = await request.json().catch(() => ({}));
+  const lat = Number(b.lat), lng = Number(b.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return json({ places: [], full: false, tier: "guest", needLocation: true });
+  const near = official.filter((p) => distKmSrv(lat, lng, p.lat, p.lng) <= 5).map(strip);
+  return json({ places: near, full: false, tier: "guest" });
+}
+function distKmSrv(lat1, lng1, lat2, lng2) {
+  const R = 6371, toR = (d) => d * Math.PI / 180;
+  const dLat = toR(lat2 - lat1), dLng = toR(lng2 - lng1);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toR(lat1)) * Math.cos(toR(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
 }
 async function handlePlacesSave(request, env) {
+  const u = await sessionUser(request, env);
+  if (!isActive(u)) return json({ error: "C\u1EA7n \u0111\u0103ng nh\u1EADp (c\xF2n h\u1EA1n) \u0111\u1EC3 th\xEAm/s\u1EEDa \u0111i\u1EC3m." }, 403);
+  const admin = isAdmin2(u);
   const b = await request.json().catch(() => ({}));
   const name = (b.name || "").toString().trim();
-  const lat = Number(b.lat);
-  const lng = Number(b.lng);
+  const lat = Number(b.lat), lng = Number(b.lng);
   if (!name) return json({ error: "Thi\u1EBFu t\xEAn \u0111\u1ECBa \u0111i\u1EC3m." }, 400);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return json({ error: "Thi\u1EBFu to\u1EA1 \u0111\u1ED9 \u0111\u1ECBa \u0111i\u1EC3m (ch\u1ECDn tr\xEAn b\u1EA3n \u0111\u1ED3)." }, 400);
-  const fields = {
-    name,
-    lat,
-    lng,
-    category: PLACE_CATS.includes(b.category) ? b.category : "an",
-    description: (b.description || "").toString(),
-    photos: Array.isArray(b.photos) ? b.photos.filter((x) => typeof x === "string" && x).slice(0, 15) : b.photoUrl ? [(b.photoUrl || "").toString()] : [],
-    address: (b.address || "").toString().trim(),
-    rating: b.rating === "" || b.rating == null ? null : Number(b.rating)
-  };
-  const places = await getPlaces(env);
+  const category = PLACE_CATS.includes(b.category) ? b.category : "an";
+  const description = (b.description || "").toString();
+  const photos = JSON.stringify(Array.isArray(b.photos) ? b.photos.filter((x) => typeof x === "string" && x).slice(0, 15) : []);
+  const address = (b.address || "").toString().trim();
+  const rating = b.rating === "" || b.rating == null ? null : Number(b.rating);
+  const now = Date.now();
   if (b.id) {
-    const i = places.findIndex((x) => x.id === b.id);
-    if (i >= 0) places[i] = { ...places[i], ...fields, updatedAt: Date.now() };
-    else places.push({ id: b.id, ...fields, createdAt: Date.now(), updatedAt: Date.now() });
-  } else {
-    places.push({ id: crypto.randomUUID(), ...fields, createdAt: Date.now(), updatedAt: Date.now() });
+    const ex = await dbPlace(env, b.id);
+    if (!ex) return json({ error: "Kh\xF4ng t\xECm th\u1EA5y \u0111i\u1EC3m." }, 404);
+    if (!admin && ex.owner_id !== u.id) return json({ error: "Kh\xF4ng c\xF3 quy\u1EC1n s\u1EEDa \u0111i\u1EC3m n\xE0y." }, 403);
+    let status2 = ex.status;
+    if (!admin) status2 = b.suggest ? "pending" : ex.status === "approved" ? "approved" : "private";
+    await env.DB.prepare("UPDATE places SET name=?,lat=?,lng=?,category=?,description=?,photos=?,address=?,rating=?,status=?,updated_at=? WHERE id=?").bind(name, lat, lng, category, description, photos, address, rating, status2, now, b.id).run();
+    return json({ ok: true, id: b.id, status: status2 });
   }
-  await savePlaces(env, places);
-  return json({ ok: true });
+  const id = crypto.randomUUID();
+  const owner_id = admin ? null : u.id;
+  const status = admin ? "approved" : b.suggest ? "pending" : "private";
+  await env.DB.prepare("INSERT INTO places (id,name,lat,lng,category,description,photos,address,rating,owner_id,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(id, name, lat, lng, category, description, photos, address, rating, owner_id, status, now, now).run();
+  return json({ ok: true, id, status });
 }
 async function handlePlacesDelete(request, env) {
+  const u = await sessionUser(request, env);
+  if (!isActive(u)) return json({ error: "C\u1EA7n \u0111\u0103ng nh\u1EADp." }, 403);
   const b = await request.json().catch(() => ({}));
-  const places = (await getPlaces(env)).filter((x) => x.id !== b.id);
-  await savePlaces(env, places);
+  const ex = await dbPlace(env, b.id);
+  if (!ex) return json({ ok: true });
+  if (!isAdmin2(u) && ex.owner_id !== u.id) return json({ error: "Kh\xF4ng c\xF3 quy\u1EC1n x\xF3a \u0111i\u1EC3m n\xE0y." }, 403);
+  await env.DB.prepare("DELETE FROM places WHERE id=?").bind(b.id).run();
+  return json({ ok: true });
+}
+async function handleMigratePlaces(request, env) {
+  if (!await requireAdmin(request, env)) return json({ error: "C\u1EA7n quy\u1EC1n admin." }, 403);
+  const kv = await getPlaces(env);
+  let n = 0;
+  for (const p of kv) {
+    const ex = await env.DB.prepare("SELECT id FROM places WHERE id=?").bind(p.id).first();
+    if (ex) continue;
+    await env.DB.prepare("INSERT INTO places (id,name,lat,lng,category,description,photos,address,rating,owner_id,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(p.id, p.name, p.lat, p.lng, p.category || "an", p.description || "", JSON.stringify(p.photos || []), p.address || "", p.rating ?? null, null, "approved", p.createdAt || Date.now(), p.updatedAt || Date.now()).run();
+    n++;
+  }
+  return json({ ok: true, migrated: n, kvTotal: kv.length });
+}
+async function handlePendingList(request, env) {
+  if (!await requireAdmin(request, env)) return json({ error: "C\u1EA7n quy\u1EC1n admin." }, 403);
+  const { results } = await env.DB.prepare("SELECT * FROM places WHERE status='pending' ORDER BY created_at DESC").all();
+  const out = [];
+  for (const r of results || []) {
+    const o = r.owner_id ? await getUserById(env, r.owner_id) : null;
+    out.push({ ...placeRow(r), owner_email: o ? o.email : null });
+  }
+  return json({ places: out });
+}
+async function handleApprovePlace(request, env) {
+  if (!await requireAdmin(request, env)) return json({ error: "C\u1EA7n quy\u1EC1n admin." }, 403);
+  const b = await request.json().catch(() => ({}));
+  await env.DB.prepare("UPDATE places SET status='approved', updated_at=? WHERE id=?").bind(Date.now(), b.id).run();
+  return json({ ok: true });
+}
+async function handleRejectPlace(request, env) {
+  if (!await requireAdmin(request, env)) return json({ error: "C\u1EA7n quy\u1EC1n admin." }, 403);
+  const b = await request.json().catch(() => ({}));
+  await env.DB.prepare("DELETE FROM places WHERE id=?").bind(b.id).run();
+  return json({ ok: true });
+}
+async function reviewStats(env) {
+  const m = {};
+  if (!env.DB) return m;
+  const { results } = await env.DB.prepare("SELECT place_id, COUNT(*) AS n, AVG(rating) AS avg, SUM(verified_checkin) AS v FROM reviews GROUP BY place_id").all();
+  for (const r of results || []) m[r.place_id] = { count: r.n, avg: r.avg, verified: r.v };
+  return m;
+}
+async function handleReviewsList(request, env) {
+  const u = await sessionUser(request, env);
+  const b = await request.json().catch(() => ({}));
+  const placeId = b.place_id;
+  if (!placeId) return json({ error: "Thi\u1EBFu place_id." }, 400);
+  const place = await dbPlace(env, placeId);
+  const isOwner = u && place && place.owner_id === u.id;
+  if (!isPaid(u) && !isOwner) return json({ locked: true, canReview: isActive(u) });
+  const { results } = await env.DB.prepare("SELECT * FROM reviews WHERE place_id=? ORDER BY verified_checkin DESC, created_at DESC").bind(placeId).all();
+  const out = [];
+  for (const r of results || []) {
+    const au = await getUserById(env, r.user_id);
+    out.push({ id: r.id, author: au ? au.name || au.email.split("@")[0] : "\u1EA8n danh", rating: r.rating, content: r.content, photos: r.photos ? JSON.parse(r.photos) : [], verified: r.verified_checkin, created_at: r.created_at, mine: !!u && r.user_id === u.id });
+  }
+  return json({ reviews: out, canReview: isActive(u) });
+}
+async function handleReviewsSave(request, env) {
+  const u = await sessionUser(request, env);
+  if (!isActive(u)) return json({ error: "C\u1EA7n \u0111\u0103ng nh\u1EADp (c\xF2n h\u1EA1n) \u0111\u1EC3 \u0111\xE1nh gi\xE1." }, 403);
+  const b = await request.json().catch(() => ({}));
+  const place = await dbPlace(env, b.place_id);
+  if (!place) return json({ error: "Kh\xF4ng t\xECm th\u1EA5y \u0111i\u1EC3m." }, 404);
+  const rating = Math.max(1, Math.min(5, Math.round(Number(b.rating) || 0)));
+  if (!rating) return json({ error: "Ch\u1ECDn s\u1ED1 sao (1\u20135)." }, 400);
+  const content = (b.content || "").toString().trim();
+  if (content.length < 100) return json({ error: "\u0110\xE1nh gi\xE1 c\u1EA7n t\u1ED1i thi\u1EC3u 100 k\xFD t\u1EF1 (hi\u1EC7n " + content.length + ")." }, 400);
+  const photos = JSON.stringify(Array.isArray(b.photos) ? b.photos.filter((x) => typeof x === "string" && x).slice(0, 10) : []);
+  const lat = Number(b.lat), lng = Number(b.lng);
+  const verified = Number.isFinite(lat) && Number.isFinite(lng) && distKmSrv(lat, lng, place.lat, place.lng) <= 0.15 ? 1 : 0;
+  const now = Date.now();
+  const ex = await env.DB.prepare("SELECT id FROM reviews WHERE place_id=? AND user_id=?").bind(b.place_id, u.id).first();
+  if (ex) {
+    await env.DB.prepare("UPDATE reviews SET rating=?,content=?,photos=?,verified_checkin=?,lat=?,lng=?,updated_at=? WHERE id=?").bind(rating, content, photos, verified, Number.isFinite(lat) ? lat : null, Number.isFinite(lng) ? lng : null, now, ex.id).run();
+    return json({ ok: true, id: ex.id, verified });
+  }
+  const id = crypto.randomUUID();
+  await env.DB.prepare("INSERT INTO reviews (id,place_id,user_id,rating,content,photos,verified_checkin,lat,lng,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(id, b.place_id, u.id, rating, content, photos, verified, Number.isFinite(lat) ? lat : null, Number.isFinite(lng) ? lng : null, now, now).run();
+  return json({ ok: true, id, verified });
+}
+async function handleReviewsDelete(request, env) {
+  const u = await sessionUser(request, env);
+  if (!isActive(u)) return json({ error: "C\u1EA7n \u0111\u0103ng nh\u1EADp." }, 403);
+  const b = await request.json().catch(() => ({}));
+  const r = await env.DB.prepare("SELECT * FROM reviews WHERE id=?").bind(b.id).first();
+  if (!r) return json({ ok: true });
+  if (!isAdmin2(u) && r.user_id !== u.id) return json({ error: "Kh\xF4ng c\xF3 quy\u1EC1n x\xF3a \u0111\xE1nh gi\xE1 n\xE0y." }, 403);
+  await env.DB.prepare("DELETE FROM reviews WHERE id=?").bind(b.id).run();
   return json({ ok: true });
 }
 var SB_BUCKET = "mephil-images";
+async function handleKeepalive(env) {
+  const sb = await getSupabase(env);
+  if (!sb.url || !sb.key) return json({ ok: false, reason: "ch\u01B0a c\u1EA5u h\xECnh Supabase" }, 200);
+  try {
+    const res = await fetch(`${sb.url}/storage/v1/bucket`, {
+      headers: { Authorization: `Bearer ${sb.key}`, apikey: sb.key }
+    });
+    return json({ ok: res.ok, status: res.status, at: (/* @__PURE__ */ new Date()).toISOString() });
+  } catch (e) {
+    return json({ ok: false, error: String(e && e.message || e).slice(0, 200) }, 200);
+  }
+}
 async function handlePlacesUpload(request, env) {
+  const u = await sessionUser(request, env);
+  if (!isActive(u)) return json({ error: "C\u1EA7n \u0111\u0103ng nh\u1EADp \u0111\u1EC3 t\u1EA3i \u1EA3nh." }, 403);
   if (!env.SETTINGS) return json({ error: "Ch\u01B0a g\u1EAFn kho \u1EA3nh (KV)." }, 500);
   const ct = (request.headers.get("content-type") || "").toLowerCase();
   if (!ct.startsWith("image/")) return json({ error: "Ch\u1EC9 nh\u1EADn t\u1EC7p \u1EA3nh." }, 400);
@@ -455,11 +696,157 @@ async function handleImg(id, env) {
     }
   });
 }
+async function handleSignup(request, env) {
+  if (!env.DB) return json({ error: "Ch\u01B0a g\u1EAFn database (D1)." }, 500);
+  const b = await request.json().catch(() => ({}));
+  try {
+    const u = await createUser(env, { email: b.email, password: b.password, name: b.name });
+    const t = await createSession(env, u.id);
+    return json({ token: t, user: publicUser(u) });
+  } catch (e) {
+    return json({ error: e.message }, 400);
+  }
+}
+async function handleLogin(request, env) {
+  if (!env.DB) return json({ error: "Ch\u01B0a g\u1EAFn database (D1)." }, 500);
+  const b = await request.json().catch(() => ({}));
+  const u = await getUserByEmail(env, b.email);
+  if (!u || !await verifyPassword(b.password || "", u.salt, u.password_hash)) return json({ error: "Sai email ho\u1EB7c m\u1EADt kh\u1EA9u." }, 401);
+  const t = await createSession(env, u.id);
+  return json({ token: t, user: publicUser(u) });
+}
+async function handleLogout(request, env) {
+  const h = request.headers.get("authorization") || "";
+  if (h.startsWith("Bearer ")) await deleteSession(env, h.slice(7).trim());
+  return json({ ok: true });
+}
+async function handleMe(request, env) {
+  return json({ user: publicUser(await sessionUser(request, env)) });
+}
+async function handleBootstrapAdmin(request, env) {
+  if (!env.DB) return json({ error: "Ch\u01B0a g\u1EAFn database (D1)." }, 500);
+  const b = await request.json().catch(() => ({}));
+  if (!await isAdmin(env, b.adminPassword)) return json({ error: "Sai m\u1EADt kh\u1EA9u admin (KV)." }, 403);
+  const existing = await env.DB.prepare("SELECT id FROM users WHERE role='admin' LIMIT 1").first();
+  if (existing) return json({ error: "\u0110\xE3 c\xF3 admin \u2014 h\xE3y \u0111\u0103ng nh\u1EADp." }, 400);
+  try {
+    const u = await createUser(env, { email: b.email, password: b.password, name: b.name || "Admin", role: "admin", plan: "none", expires_at: null });
+    const t = await createSession(env, u.id);
+    return json({ token: t, user: publicUser(u) });
+  } catch (e) {
+    return json({ error: e.message }, 400);
+  }
+}
+async function requireAdmin(request, env) {
+  const u = await sessionUser(request, env);
+  return isAdmin2(u) ? u : null;
+}
+async function handleUsersList(request, env) {
+  if (!await requireAdmin(request, env)) return json({ error: "C\u1EA7n quy\u1EC1n admin." }, 403);
+  const { results } = await env.DB.prepare("SELECT id,email,name,role,plan,expires_at,created_at FROM users ORDER BY created_at DESC").all();
+  return json({ users: results || [] });
+}
+async function handleUsersSave(request, env) {
+  if (!await requireAdmin(request, env)) return json({ error: "C\u1EA7n quy\u1EC1n admin." }, 403);
+  const b = await request.json().catch(() => ({}));
+  const now = Date.now();
+  try {
+    if (b.id) {
+      const u2 = await getUserById(env, b.id);
+      if (!u2) return json({ error: "Kh\xF4ng t\xECm th\u1EA5y user." }, 404);
+      await env.DB.prepare("UPDATE users SET name=?, role=?, plan=?, expires_at=?, updated_at=? WHERE id=?").bind(b.name ?? u2.name, b.role || u2.role, b.plan || u2.plan, b.expires_at !== void 0 ? b.expires_at : u2.expires_at, now, b.id).run();
+      if (b.password) {
+        const { hash, salt } = await hashPassword(b.password);
+        await env.DB.prepare("UPDATE users SET password_hash=?, salt=? WHERE id=?").bind(hash, salt, b.id).run();
+      }
+      return json({ ok: true });
+    }
+    const u = await createUser(env, { email: b.email, password: b.password, name: b.name, role: b.role || "user", plan: b.plan || "trial", expires_at: b.expires_at });
+    return json({ ok: true, id: u.id });
+  } catch (e) {
+    return json({ error: e.message }, 400);
+  }
+}
+async function handleUsersDelete(request, env) {
+  if (!await requireAdmin(request, env)) return json({ error: "C\u1EA7n quy\u1EC1n admin." }, 403);
+  const b = await request.json().catch(() => ({}));
+  await env.DB.prepare("DELETE FROM sessions WHERE user_id=?").bind(b.id).run();
+  await env.DB.prepare("DELETE FROM users WHERE id=?").bind(b.id).run();
+  return json({ ok: true });
+}
+async function handleToursList(request, env) {
+  if (!env.DB) return json({ tours: [], canView: false });
+  const u = await sessionUser(request, env);
+  const admin = isAdmin2(u);
+  const q = admin ? "SELECT * FROM tours ORDER BY created_at DESC" : "SELECT * FROM tours WHERE published=1 ORDER BY created_at DESC";
+  const { results } = await env.DB.prepare(q).all();
+  const tours = [];
+  for (const t of results || []) {
+    const dc = await env.DB.prepare("SELECT COUNT(*) AS n FROM tour_days WHERE tour_id=?").bind(t.id).first();
+    tours.push({ id: t.id, title: t.title, description: t.description, cover_photo: t.cover_photo, published: t.published, dayCount: dc ? dc.n : 0 });
+  }
+  return json({ tours, canView: isPaid(u) });
+}
+async function handleToursGet(request, env) {
+  if (!env.DB) return json({ error: "Ch\u01B0a g\u1EAFn database." }, 500);
+  const u = await sessionUser(request, env);
+  const b = await request.json().catch(() => ({}));
+  const t = await env.DB.prepare("SELECT * FROM tours WHERE id=?").bind(b.id).first();
+  if (!t) return json({ error: "Kh\xF4ng t\xECm th\u1EA5y tour." }, 404);
+  if (!isPaid(u)) return json({ locked: true, tour: { id: t.id, title: t.title, description: t.description, cover_photo: t.cover_photo } });
+  const { results: days } = await env.DB.prepare("SELECT * FROM tour_days WHERE tour_id=? ORDER BY day_no").bind(t.id).all();
+  const all = await dbAllPlaces(env);
+  const byId = Object.fromEntries(all.map((p) => [p.id, p]));
+  const fullDays = [];
+  for (const d of days || []) {
+    const { results: stops } = await env.DB.prepare("SELECT * FROM tour_stops WHERE day_id=? ORDER BY seq").bind(d.id).all();
+    fullDays.push({ id: d.id, day_no: d.day_no, title: d.title, note: d.note, stops: (stops || []).map((s) => ({ id: s.id, place_id: s.place_id, guide: s.guide, place: byId[s.place_id] || null })) });
+  }
+  return json({ tour: { id: t.id, title: t.title, description: t.description, cover_photo: t.cover_photo, published: t.published, days: fullDays } });
+}
+async function handleAdminToursSave(request, env) {
+  if (!await requireAdmin(request, env)) return json({ error: "C\u1EA7n quy\u1EC1n admin." }, 403);
+  const b = await request.json().catch(() => ({}));
+  if (!(b.title || "").trim()) return json({ error: "Thi\u1EBFu t\xEAn tour." }, 400);
+  const now = Date.now();
+  let id = b.id;
+  if (id) {
+    await env.DB.prepare("UPDATE tours SET title=?,description=?,cover_photo=?,published=?,updated_at=? WHERE id=?").bind(b.title, b.description || "", b.cover_photo || "", b.published ? 1 : 0, now, id).run();
+    const { results: od } = await env.DB.prepare("SELECT id FROM tour_days WHERE tour_id=?").bind(id).all();
+    for (const d of od || []) await env.DB.prepare("DELETE FROM tour_stops WHERE day_id=?").bind(d.id).run();
+    await env.DB.prepare("DELETE FROM tour_days WHERE tour_id=?").bind(id).run();
+  } else {
+    id = crypto.randomUUID();
+    await env.DB.prepare("INSERT INTO tours (id,title,description,cover_photo,published,created_at,updated_at) VALUES (?,?,?,?,?,?,?)").bind(id, b.title, b.description || "", b.cover_photo || "", b.published ? 1 : 0, now, now).run();
+  }
+  const days = Array.isArray(b.days) ? b.days : [];
+  for (let i = 0; i < days.length; i++) {
+    const d = days[i];
+    const dayId = crypto.randomUUID();
+    await env.DB.prepare("INSERT INTO tour_days (id,tour_id,day_no,title,note) VALUES (?,?,?,?,?)").bind(dayId, id, i + 1, d.title || "", d.note || "").run();
+    const stops = Array.isArray(d.stops) ? d.stops : [];
+    for (let j = 0; j < stops.length; j++) {
+      const s = stops[j];
+      if (!s || !s.place_id) continue;
+      await env.DB.prepare("INSERT INTO tour_stops (id,day_id,place_id,seq,guide) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(), dayId, s.place_id, j, s.guide || "").run();
+    }
+  }
+  return json({ ok: true, id });
+}
+async function handleAdminToursDelete(request, env) {
+  if (!await requireAdmin(request, env)) return json({ error: "C\u1EA7n quy\u1EC1n admin." }, 403);
+  const b = await request.json().catch(() => ({}));
+  const { results: days } = await env.DB.prepare("SELECT id FROM tour_days WHERE tour_id=?").bind(b.id).all();
+  for (const d of days || []) await env.DB.prepare("DELETE FROM tour_stops WHERE day_id=?").bind(d.id).run();
+  await env.DB.prepare("DELETE FROM tour_days WHERE tour_id=?").bind(b.id).run();
+  await env.DB.prepare("DELETE FROM tours WHERE id=?").bind(b.id).run();
+  return json({ ok: true });
+}
 async function handlePlacesMapKey(request, env) {
   const key = await getGoogleMapsKey(env);
   if (!key) return json({ error: "Ch\u01B0a c\u1EA5u h\xECnh Google Maps API key. M\u1EDF trang C\xE0i \u0111\u1EB7t (\u2699\uFE0F) \u0111\u1EC3 nh\u1EADp nh\xE9." }, 503);
   return json({ mapKey: key });
 }
 export {
-  src_default as default
+  index_default as default
 };
