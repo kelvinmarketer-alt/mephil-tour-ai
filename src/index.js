@@ -456,11 +456,14 @@ const SB_BUCKET = "mephil-images";
 async function handleKeepalive(env) {
   const sb = await getSupabase(env);
   if (!sb.url || !sb.key) return json({ ok: false, reason: "chưa cấu hình Supabase" }, 200);
+  const h = { Authorization: `Bearer ${sb.key}`, apikey: sb.key };
   try {
-    const res = await fetch(`${sb.url}/storage/v1/bucket`, {
-      headers: { Authorization: `Bearer ${sb.key}`, apikey: sb.key },
-    });
-    return json({ ok: res.ok, status: res.status, at: new Date().toISOString() });
+    // Gọi cả Storage lẫn PostgREST (chạm database) — chắc ăn hơn khi Supabase tính "hoạt động".
+    const [st, db] = await Promise.all([
+      fetch(`${sb.url}/storage/v1/bucket`, { headers: h }),
+      fetch(`${sb.url}/rest/v1/`, { headers: h }),
+    ]);
+    return json({ ok: st.ok && db.ok, storage: st.status, db: db.status, at: new Date().toISOString() });
   } catch (e) {
     return json({ ok: false, error: String((e && e.message) || e).slice(0, 200) }, 200);
   }
