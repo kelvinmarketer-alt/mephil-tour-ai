@@ -11,7 +11,7 @@ id = "96ceb0a96321491b80dc2ad93ede62fa"
 [[d1_databases]]
 binding = "DB"
 database_name = "mephil-map"
-database_id = "387a7507-82ee-4edd-b126-1fe62939f117"
+database_id = "bc78d0b4-5e99-4cb3-8204-b00adcd457f0"
 
 [vars]
 MODEL = "gpt-4o-mini"
